@@ -4,7 +4,7 @@
 #include <list>
 #include <iostream>
 #include <algorithm>
-#include "BasicTimer.h"
+#include "BSignals/details/BasicTimer.h"
 #include "BSignals/details/MPMCQueue.hpp"
 
 

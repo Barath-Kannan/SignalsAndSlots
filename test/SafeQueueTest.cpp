@@ -4,7 +4,7 @@
 #include <list>
 #include <iostream>
 
-#include "BasicTimer.h"
+#include "BSignals/details/BasicTimer.h"
 
 using std::thread;
 using std::list;

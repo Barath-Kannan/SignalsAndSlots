@@ -51,7 +51,7 @@ enum class SignalConnectionScheme{
     SYNCHRONOUS,
     ASYNCHRONOUS, 
     ASYNCHRONOUS_ENQUEUE,
-    THREAD_POOLED
+    THREAD_POOLED /*thread pooled mode in development*/
 };
 
 template <typename... Args>

@@ -1,7 +1,7 @@
 
 /* 
  * File:   BasicTimer.h
- * Author: kannanb
+ * Author: Barath Kannan
  *
  * Created on April 21, 2016, 12:09 PM
  */

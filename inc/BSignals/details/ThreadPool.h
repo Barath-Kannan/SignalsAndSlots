@@ -13,30 +13,36 @@
 #include <functional>
 #include <thread>
 #include <list>
+#include <mutex>
+#include <chrono>
+#include <condition_variable>
 #include "BSignals/details/MPMCQueue.hpp"
-#include "BSignals/details/SafeQueue.hpp"
 
 class ThreadPool {
 public:
     template <typename... Args>
     static void run(std::function<void(Args...)> task, Args... p){
         threadPooledFunctions.enqueue([=](){task(p...);});
+        realTasks++;
     }
     
 private:
     static void queueListener();
+    static void poolMonitor();
     
     static class _init {
     public:
         _init();
         ~_init(); //destructor
     } _initializer;
-    
+
+    static std::function<void()> bfc;
     static const uint16_t maxPoolThreads;
     static const uint16_t basePoolThreads;
     static MPMCQueue<std::function<void()>> threadPooledFunctions;
-    //static SafeQueue<std::function<void()>> threadPooledFunctions;
-    static std::list<std::thread> pool;
+    static std::thread poolMonitorThread;
+    static std::atomic<uint32_t> nThreads;
+    static std::atomic<uint32_t> realTasks;
 };
 
 #endif /* THREADPOOL_H */

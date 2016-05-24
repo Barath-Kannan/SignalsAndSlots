@@ -5,7 +5,7 @@
 #include <thread>
 #include <atomic>
 
-#include "BasicTimer.h"
+#include "BSignals/details/BasicTimer.h"
 #include "BSignals/details/SafeQueue.hpp"
 #include "FunctionTimeRegular.hpp"
 
@@ -286,12 +286,16 @@ TEST_P(SignalTestParametrized, IntenseUsage){
     
     typedef uint32_t sigType;
     auto func = ([&params, &completedFunctions](sigType x){
-//        vector<char> res(vec.size());
-//        for (uint32_t i=0; i<params.nOperations; i++){
-//            memcpy(res.data(), vec.data(), vec.size());
-//        }
-        sigType  t;
-        memcpy(&t, &x, sizeof(t));
+        vector<char> vec(x);
+        
+        vector<char> vec2(x);
+        for (uint32_t i=0; i<params.nOperations; i++){
+            for (uint32_t j=0; j<x; j++){
+                vec[j] = '\0';
+                vec2[x] = '\0';
+            }
+            memcpy(vec2.data(), vec.data(), vec2.size());
+        }
         completedFunctions++;
     });
     
@@ -368,7 +372,8 @@ INSTANTIATE_TEST_CASE_P(
         SignalTestParameters{10, 10, 512, 1000, SignalConnectionScheme::SYNCHRONOUS},                
         SignalTestParameters{10, 1000, 512, 1000, SignalConnectionScheme::SYNCHRONOUS},
         SignalTestParameters{10, 100000, 512, 1000, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{10, 1000, 512, 50000, SignalConnectionScheme::SYNCHRONOUS}
+        SignalTestParameters{10, 1000, 512, 50000, SignalConnectionScheme::SYNCHRONOUS},
+        SignalTestParameters{100, 100, 512, 50000, SignalConnectionScheme::SYNCHRONOUS}
     )
 );
         
@@ -395,7 +400,9 @@ INSTANTIATE_TEST_CASE_P(
         SignalTestParameters{10, 10, 512, 1000, SignalConnectionScheme::ASYNCHRONOUS},                
         SignalTestParameters{10, 1000, 512, 1000, SignalConnectionScheme::ASYNCHRONOUS},
         SignalTestParameters{10, 100000, 512, 1000, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{10, 1000, 512, 50000, SignalConnectionScheme::ASYNCHRONOUS}
+        SignalTestParameters{10, 1000, 512, 50000, SignalConnectionScheme::ASYNCHRONOUS},
+        SignalTestParameters{100, 100, 512, 50000, SignalConnectionScheme::ASYNCHRONOUS}
+        
     )
 );
     
@@ -423,7 +430,8 @@ INSTANTIATE_TEST_CASE_P(
         SignalTestParameters{10, 10, 512, 1000, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},                
         SignalTestParameters{10, 1000, 512, 1000, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
         SignalTestParameters{10, 100000, 512, 1000, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{10, 1000, 512, 50000, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE}
+        SignalTestParameters{10, 1000, 512, 50000, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
+        SignalTestParameters{100, 100, 512, 50000, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE}
     )
 );
     
@@ -450,6 +458,7 @@ INSTANTIATE_TEST_CASE_P(
         SignalTestParameters{10, 10, 512, 1000, SignalConnectionScheme::THREAD_POOLED},                
         SignalTestParameters{10, 1000, 512, 1000, SignalConnectionScheme::THREAD_POOLED},
         SignalTestParameters{10, 100000, 512, 1000, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{10, 1000, 512, 50000, SignalConnectionScheme::THREAD_POOLED}
+        SignalTestParameters{10, 1000, 512, 50000, SignalConnectionScheme::THREAD_POOLED},
+        SignalTestParameters{100, 100, 512, 50000, SignalConnectionScheme::THREAD_POOLED}
     )
 );
