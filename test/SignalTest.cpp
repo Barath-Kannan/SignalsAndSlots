@@ -353,6 +353,7 @@ INSTANTIATE_TEST_CASE_P(
     SignalTest_Benchmark_Synchronized,
     SignalTestParametrized,
     Values(
+        SignalTestParameters{1, 100, 1, 1, SignalConnectionScheme::SYNCHRONOUS},
         SignalTestParameters{1, 10, 4, 1, SignalConnectionScheme::SYNCHRONOUS},
         SignalTestParameters{1, 10, 4, 100, SignalConnectionScheme::SYNCHRONOUS},
         SignalTestParameters{1, 10, 4, 10000, SignalConnectionScheme::SYNCHRONOUS},
@@ -381,6 +382,7 @@ INSTANTIATE_TEST_CASE_P(
     SignalTest_Benchmark_Asynchronous,
     SignalTestParametrized,
     Values(
+        SignalTestParameters{1, 100, 1, 1, SignalConnectionScheme::ASYNCHRONOUS},
         SignalTestParameters{1, 10, 4, 1, SignalConnectionScheme::ASYNCHRONOUS},
         SignalTestParameters{1, 10, 4, 100, SignalConnectionScheme::ASYNCHRONOUS},
         SignalTestParameters{1, 10, 4, 10000, SignalConnectionScheme::ASYNCHRONOUS},
@@ -411,6 +413,7 @@ INSTANTIATE_TEST_CASE_P(
     SignalTest_Benchmark_AsynchronousEnqueue,
     SignalTestParametrized,
     Values(
+        SignalTestParameters{1, 100, 1, 1, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
         SignalTestParameters{1, 10, 4, 1, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
         SignalTestParameters{1, 10, 4, 100, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
         SignalTestParameters{1, 10, 4, 10000, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
@@ -439,6 +442,7 @@ INSTANTIATE_TEST_CASE_P(
     SignalTest_Benchmark_ThreadPooled,
     SignalTestParametrized,
     Values(
+        SignalTestParameters{1, 100, 1, 1, SignalConnectionScheme::THREAD_POOLED},
         SignalTestParameters{1, 10, 4, 1, SignalConnectionScheme::THREAD_POOLED},
         SignalTestParameters{1, 10, 4, 100, SignalConnectionScheme::THREAD_POOLED},
         SignalTestParameters{1, 10, 4, 10000, SignalConnectionScheme::THREAD_POOLED},
