@@ -203,7 +203,7 @@ $(DYNAMIC_LIBRARY_CONSTRUCT) : $(BUILDDIR)/$(FLAGSDIR)/genobjs | $(BUILDDIR)/$(F
 $(BUILDDIR)/$(GENLIB)/dynamic/lib$(PROJECT).so.1 $(BUILDDIR)/$(GENLIB)/dynamic/lib$(PROJECT).so : $(BUILDDIR)/$(GENLIB)/dynamic/lib$(PROJECT).so.1.0
 $(BUILDDIR)/$(GENLIB)/dynamic/lib$(PROJECT).so.1.0 :
 	@echo "Generating dynamic library lib$(PROJECT).so"
-	$(CC) -fPIC $(CFLAGS) $(CPPFLAGS) -shared -Wl,-soname,lib$(PROJECT).so.1 -o $@ $(NOTMAINOBJFILES) $(ADDITIONAL_LIBRARY_OBJECT_FILES) $(ADDOBJS) $(MOCOBJS)
+	$(CC) -fPIC $(CFLAGS) $(CPPFLAGS) $(OPTS) $(EXTRAOPTS) -shared -Wl,-soname,lib$(PROJECT).so.1 -o $@ $(NOTMAINOBJFILES) $(ADDITIONAL_LIBRARY_OBJECT_FILES) $(ADDOBJS) $(MOCOBJS)
 	ln -sf lib$(PROJECT).so.1.0 $(BUILDDIR)/$(GENLIB)/dynamic/lib$(PROJECT).so.1
 	ln -sf lib$(PROJECT).so.1.0 $(BUILDDIR)/$(GENLIB)/dynamic/lib$(PROJECT).so
 	@echo "Dynamic library generated"
@@ -224,7 +224,7 @@ $(BUILDDIR)/$(FLAGSDIR)/linklibsstatic: $(STATIC_LIBRARY_CONSTRUCT) $(BUILDDIR)/
 	@touch $@
 
 define linkbin
-	@echo "$(CC) -Wl,-unresolved-symbols=ignore-in-shared-libs $(D_DEFINES) $(CFLAGS) $(CPPFLAGS) $1 $(NOTMAINOBJFILES) $(ADDOBJS) $(MOCOBJS) $(LINKS) $(L_LIBDIRS) $(l_LINKLIBS) $(I_INCDIRS) $(I_EXTINCDIRS) -o $(BUILDDIR)/$(BINDIR)/$(PROJECT)$(notdir $(basename $1))"
+	@echo "$(CC) $(OPTS) $(EXTRAOPTS) -Wl,-unresolved-symbols=ignore-in-shared-libs $(D_DEFINES) $(CFLAGS) $(CPPFLAGS) $1 $(NOTMAINOBJFILES) $(ADDOBJS) $(MOCOBJS) $(LINKS) $(L_LIBDIRS) $(l_LINKLIBS) $(I_INCDIRS) $(I_EXTINCDIRS) -o $(BUILDDIR)/$(BINDIR)/$(PROJECT)$(notdir $(basename $1))"
 	$(CC) -Wl,-unresolved-symbols=ignore-in-shared-libs $(D_DEFINES) $(CFLAGS) $(CPPFLAGS) $1 $(NOTMAINOBJFILES) $(ADDOBJS) $(MOCOBJS) $(LINKS) $(L_LIBDIRS) $(l_LINKLIBS) $(I_INCDIRS) $(I_EXTINCDIRS) -o $(BUILDDIR)/$(BINDIR)/$(PROJECT)$(notdir $(basename $1)) || exit
 endef
 
@@ -241,7 +241,7 @@ TEST_BINARY_CONSTRUCT = $(BUILDDIR)/test/$(PROJECT)Tester
 $(TEST_BINARY_CONSTRUCT) : $(BUILDDIR)/$(FLAGSDIR)/genobjs | $(BUILDDIR)/$(FLAGSDIR)/pre-build
 $(BUILDDIR)/test/$(PROJECT)Tester :
 	@echo "Generating tests:"
-	$(CC) -Wl,-unresolved-symbols=ignore-in-shared-libs $(D_DEFINES) $(CFLAGS) $(CPPFLAGS) $(NOTMAINOBJFILES) $(MOCOBJS) $(ADDOBJS) $(TESTOBJS) $(TESTLIB) $(LINKS) $(L_LIBDIRS) $(l_LINKLIBS) $(I_INCDIRS) $(I_EXTINCDIRS) $(I_TESTINCDIRS) -o $(BUILDDIR)/test/$(PROJECT)Tester
+	$(CC) $(OPTS) $(EXTRAOPTS) -Wl,-unresolved-symbols=ignore-in-shared-libs $(D_DEFINES) $(CFLAGS) $(CPPFLAGS) $(NOTMAINOBJFILES) $(MOCOBJS) $(ADDOBJS) $(TESTOBJS) $(TESTLIB) $(LINKS) $(L_LIBDIRS) $(l_LINKLIBS) $(I_INCDIRS) $(I_EXTINCDIRS) $(I_TESTINCDIRS) -o $(BUILDDIR)/test/$(PROJECT)Tester
 	@echo "Tests generated"
 endif
 

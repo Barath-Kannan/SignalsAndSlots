@@ -36,8 +36,8 @@ bool BasicTimer::isRunning() {
 
 bool BasicTimer::start() {
     if (running) return false;
-    begin = std::chrono::high_resolution_clock::now();
     running = true;
+    begin = std::chrono::high_resolution_clock::now();
     return true;
 }
 

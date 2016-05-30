@@ -170,10 +170,9 @@ private:
     }
     
     void runAsynchronousEnqueued(uint32_t asyncQueueId, const std::function<void(Args...)> &function, Args... p) const{
-        //bind the function arguments to the function and store the
-        //newly bound function. This changes the function signature
-        //in the resultant map, there are no longer any parameters 
-        //in the bound function
+        //bind the function arguments to the function using a lambda and store
+        //the newly bound function. This changes the function signature in the
+        //resultant map, there are no longer any parameters in the bound function
         asyncQueues[asyncQueueId].enqueue([&function, p...](){function(p...);});
     }
     
@@ -241,7 +240,8 @@ private:
     mutable std::map<uint32_t, std::function<void(Args...)>> asynchronousEnqueueSlots;
     mutable std::map<uint32_t, std::function<void(Args...)>> threadPooledSlots;
     
-    //Flags to determine if map needs to be checked - saves ~4 nanoseconds
+    //Flags to determine if map needs to be checked - saves ~4 nanoseconds when
+    //executed on Signals where connected slots only have 1 connection scheme
     mutable bool hasSynchronousSlots;
     mutable bool hasAsynchronousSlots;
     mutable bool hasAsynchronousEnqueueSlots;
