@@ -20,6 +20,7 @@
 
 #include "BSignals/details/SafeQueue.hpp"
 #include "BSignals/details/ThreadPool.h"
+#include "BSignals/details/QuickSemaphore.h"
 
 //These connection schemes determine how message emission to a connection occurs
     // SYNCHRONOUS CONNECTION:
@@ -57,9 +58,7 @@ enum class SignalConnectionScheme{
 template <typename... Args>
 class Signal {
 public:
-    Signal(uint16_t maxAsyncThreads = 100) : currentId(0) {
-        sem=maxAsyncThreads;
-    }
+    Signal(uint16_t maxAsyncThreads = 100) : currentId(0), sem(maxAsyncThreads) {}
     
     ~Signal(){
         disconnectAllSlots();
@@ -138,22 +137,15 @@ public:
             //newly bound function. This changes the function signature
             //in the resultant map, there are no longer any parameters 
             //in the bound function
-            asyncQueues[slot.first].enqueue([=](){slot.second(p...);});
+            asyncQueues[slot.first].enqueue([slot, p...](){slot.second(p...);});
         }
         
         //run asynchronous slots on their own thread
         for (auto slot : asynchronousSlots){
-            std::unique_lock<std::mutex> lock(semMutex);
-            while (sem <= 0){
-                semCondition.wait(lock);
-            }
-            sem--;
-            lock.unlock();
+            sem.acquire();
             std::thread slotThread([this, slot, p...](){
                 slot.second(p...);
-                std::unique_lock<std::mutex> lock(semMutex);
-                sem++;
-                semCondition.notify_one();
+                sem.release();                
             });
             slotThread.detach();
         }
@@ -212,9 +204,7 @@ private:
     mutable std::map<uint32_t, std::function<void(Args...)>> synchronousSlots;
     
     //Async Emit Thread
-    mutable std::atomic<uint32_t> sem;
-    mutable std::mutex semMutex;
-    mutable std::condition_variable semCondition;
+    mutable QuickSemaphore sem;
     mutable std::map<uint32_t, std::function<void(Args...)>> asynchronousSlots;
     
     //Async Enqueue 

@@ -6,7 +6,7 @@
 BUILD_MOCS = 0
 
 #Generates dynamic (shared object) and static (archive) from non-main objects
-BUILD_LIB = 0
+BUILD_LIB = 1
 
 #Generates binary from all objects
 BUILD_BIN = 0
@@ -33,6 +33,7 @@ GOOGLETEST_LIB = 3rdparty/googletest/gen/debug/lib/static/libgtest.a
 ######################
 ## Compiler Options ##
 ######################
+
 #Compiler
 CC = g++
 
@@ -116,7 +117,7 @@ TESTINC = $(GOOGLETEST_INC)
 
 # debug - builds with debug options by default (can be manually specified by invoking the debug target)
 # release - builds with release options by default (can be manually specified by invoking the release target)
-BUILD_TYPE = release
+BUILD_TYPE = debug
 
 # 0 = Include only INCDIR
 # 1 = Recursively include all directories in INCDIR
