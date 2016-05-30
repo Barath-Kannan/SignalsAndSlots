@@ -64,7 +64,7 @@ PROJECT = BSignals
 DEFINE =  LINUX
 
 #Pre-Build Scripts
-PREBUILD = $(MAKE) -C 3rdparty/googletest
+PREBUILD = +$(MAKE) -C 3rdparty/googletest
 
 #Post-Build Scripts
 POSTBUILD = 
@@ -117,7 +117,7 @@ TESTINC = $(GOOGLETEST_INC)
 
 # debug - builds with debug options by default (can be manually specified by invoking the debug target)
 # release - builds with release options by default (can be manually specified by invoking the release target)
-BUILD_TYPE = debug
+BUILD_TYPE = release
 
 # 0 = Include only INCDIR
 # 1 = Recursively include all directories in INCDIR

@@ -21,7 +21,7 @@
 class ThreadPool {
 public:
     template <typename... Args>
-    static void run(std::function<void(Args...)> task, Args... p){
+    static void run(const std::function<void(Args...)> &task, Args... p){
         threadPooledFunctions.enqueue([=](){task(p...);});
         realTasks++;
     }

@@ -1,30 +1,30 @@
 
 /* 
- * File:   QuickSemaphore.h
+ * File:   Semaphore.h
  * Author: Barath Kannan
  *
  * Created on 30 May 2016, 6:49 PM
  */
 
-#ifndef QUICKSEMAPHORE_H
-#define QUICKSEMAPHORE_H
+#ifndef SEMAPHORE_H
+#define SEMAPHORE_H
 
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
 
-class QuickSemaphore{
+class Semaphore{
 public:
-    QuickSemaphore(uint32_t size);
-    ~QuickSemaphore();
+    Semaphore(uint32_t size);
+    ~Semaphore();
     
     void acquire();
     void release();
 private:
     std::mutex semMutex;
     std::condition_variable semCV;
-    std::atomic<uint32_t> semCounter;
+    uint32_t semCounter;
 };
 
-#endif /* QUICKSEMAPHORE_H */
+#endif /* SEMAPHORE_H */
 
