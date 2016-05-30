@@ -46,16 +46,13 @@ void ThreadPool::poolMonitor() {
     std::chrono::high_resolution_clock::time_point epoch = std::chrono::high_resolution_clock::from_time_t(0);
     std::chrono::high_resolution_clock::time_point lastEmit = epoch;
     
-    
-    while (!threadPooledFunctions.isStopped()){
-        
-        //cout << "Pool size: " << nThreads << ", Real tasks: " << realTasks << endl;
-        if (realTasks > nThreads && nThreads < maxPoolThreads){
+    while (!threadPooledFunctions.isStopped()){;
+        if (nThreads == 0 || (realTasks > nThreads && nThreads < maxPoolThreads)){
             nThreads++;
             std::thread ql(&ThreadPool::queueListener);
             ql.detach();
         }
-        else if (realTasks < nThreads && realTasks != 0){
+        else if (nThreads > 1 && realTasks < nThreads && realTasks != 0){
             if (!stopThreadTimer.isRunning()){
                 stopThreadTimer.start();
             }

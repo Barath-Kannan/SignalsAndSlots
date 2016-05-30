@@ -6,7 +6,7 @@
 BUILD_MOCS = 0
 
 #Generates dynamic (shared object) and static (archive) from non-main objects
-BUILD_LIB = 0
+BUILD_LIB = 1
 
 #Generates binary from all objects
 BUILD_BIN = 0
@@ -33,6 +33,7 @@ GOOGLETEST_LIB = 3rdparty/googletest/gen/debug/lib/static/libgtest.a
 ######################
 ## Compiler Options ##
 ######################
+
 #Compiler
 CC = g++
 
@@ -63,7 +64,7 @@ PROJECT = BSignals
 DEFINE =  LINUX
 
 #Pre-Build Scripts
-PREBUILD = $(MAKE) -C 3rdparty/googletest
+PREBUILD = +$(MAKE) -C 3rdparty/googletest
 
 #Post-Build Scripts
 POSTBUILD = 
