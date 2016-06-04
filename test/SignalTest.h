@@ -27,8 +27,7 @@ struct SignalTestParameters{
 };
 
 class SignalTestParametrized : public SignalTest,
-        public testing::WithParamInterface<SignalTestParameters>{
+        public testing::WithParamInterface< ::testing::tuple<uint32_t, uint32_t, uint32_t, uint32_t, SignalConnectionScheme> >{
 };
 
 #endif /* SIGNALTEST_H */
-

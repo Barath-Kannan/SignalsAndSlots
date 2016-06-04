@@ -259,7 +259,8 @@ TEST_F(SignalTest, MemberFunction){
 }
 
 TEST_P(SignalTestParametrized, IntenseUsage){
-    SignalTestParameters params = GetParam();
+    auto tupleParams = GetParam();
+    SignalTestParameters params = {::testing::get<0>(tupleParams), ::testing::get<1>(tupleParams), ::testing::get<2>(tupleParams), ::testing::get<3>(tupleParams), ::testing::get<4>(tupleParams) };
     BasicTimer bt, bt2;
     
     cout << "Intense usage test for signal type: ";
@@ -350,121 +351,15 @@ TEST_P(SignalTestParametrized, IntenseUsage){
     cout << "Time to emit+process: " << bt2.getElapsedMilliseconds() << "ms" << endl;
     cout << "Average emit+process time: " << (double)bt2.getElapsedNanoseconds()/params.nEmissions << "ns" << endl;
 }
-
+//
 INSTANTIATE_TEST_CASE_P(
-    SignalTest_Benchmark_Synchronous,
+    SignalTest_Benchmark,
     SignalTestParametrized,
-    Values(
-        SignalTestParameters{1, 100000, 1, 1, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{1, 100000, 4, 1, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{1, 100000, 4, 100, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{1, 100000, 4, 10000, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{10, 100000, 4, 1, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{100, 100000, 4, 1, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{1000, 100000, 4, 1, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{1, 100000, 4, 1, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{1, 1000000, 4, 1, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{1, 10000000, 4, 1, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{10, 10000000, 4, 10, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{10, 10000000, 4, 100, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{10, 10000000, 4, 1000, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{10, 1000000000, 4, 10, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{10, 100000000, 4, 100, SignalConnectionScheme::SYNCHRONOUS},                
-        SignalTestParameters{10, 10000000, 4, 1000, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{10, 10000000, 4, 10000, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{10, 100000, 512, 1000, SignalConnectionScheme::SYNCHRONOUS},                
-        SignalTestParameters{10, 1000000, 512, 1000, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{10, 1000000, 512, 1000, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{10, 1000000, 512, 50000, SignalConnectionScheme::SYNCHRONOUS},
-        SignalTestParameters{100, 10000, 512, 50000, SignalConnectionScheme::SYNCHRONOUS}
-    )
-);
-        
-INSTANTIATE_TEST_CASE_P(
-    SignalTest_Benchmark_Asynchronous,
-    SignalTestParametrized,
-    Values(
-        SignalTestParameters{1, 100000, 1, 1, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{1, 10, 4, 1, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{1, 10, 4, 100, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{1, 10, 4, 10000, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{10, 10, 4, 1, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{100, 10, 4, 1, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{1000, 10, 4, 1, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{1, 10, 4, 1, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{1, 100, 4, 1, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{1, 1000, 4, 1, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{10, 1000, 4, 10, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{10, 1000, 4, 100, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{10, 1000, 4, 1000, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{10, 100000, 4, 10, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{10, 10000, 4, 100, SignalConnectionScheme::ASYNCHRONOUS},                
-        SignalTestParameters{10, 1000, 4, 1000, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{10, 1000, 4, 10000, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{10, 10, 512, 1000, SignalConnectionScheme::ASYNCHRONOUS},                
-        SignalTestParameters{10, 1000, 512, 1000, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{10, 100000, 512, 1000, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{10, 1000, 512, 50000, SignalConnectionScheme::ASYNCHRONOUS},
-        SignalTestParameters{100, 100, 512, 50000, SignalConnectionScheme::ASYNCHRONOUS}
-        
-    )
-);
-    
-            
-INSTANTIATE_TEST_CASE_P(
-    SignalTest_Benchmark_AsynchronousEnqueue,
-    SignalTestParametrized,
-    Values(
-        SignalTestParameters{1, 100000, 1, 1, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{1, 10, 4, 1, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{1, 10, 4, 100, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{1, 10, 4, 10000, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{10, 10, 4, 1, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{100, 10, 4, 1, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{1000, 10, 4, 1, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{1, 10, 4, 1, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{1, 100, 4, 1, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{1, 1000, 4, 1, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{10, 1000, 4, 10, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{10, 1000, 4, 100, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{10, 1000, 4, 1000, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{10, 100000, 4, 10, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{10, 10000, 4, 100, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},                
-        SignalTestParameters{10, 1000, 4, 1000, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{10, 1000, 4, 10000, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{10, 10, 512, 1000, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},                
-        SignalTestParameters{10, 1000, 512, 1000, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{10, 100000, 512, 1000, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{10, 1000, 512, 50000, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE},
-        SignalTestParameters{100, 100, 512, 50000, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE}
-    )
-);
-    
-INSTANTIATE_TEST_CASE_P(
-    SignalTest_Benchmark_ThreadPooled,
-    SignalTestParametrized,
-    Values(
-        SignalTestParameters{1, 100000, 1, 1, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{1, 10, 4, 1, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{1, 10, 4, 100, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{1, 10, 4, 10000, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{10, 10, 4, 1, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{100, 10, 4, 1, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{1000, 10, 4, 1, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{1, 10, 4, 1, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{1, 100, 4, 1, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{1, 1000, 4, 1, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{10, 1000, 4, 10, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{10, 1000, 4, 100, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{10, 1000, 4, 1000, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{10, 100000, 4, 10, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{10, 10000, 4, 100, SignalConnectionScheme::THREAD_POOLED},                
-        SignalTestParameters{10, 1000, 4, 1000, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{10, 1000, 4, 10000, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{10, 10, 512, 1000, SignalConnectionScheme::THREAD_POOLED},                
-        SignalTestParameters{10, 1000, 512, 1000, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{10, 100000, 512, 1000, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{10, 1000, 512, 50000, SignalConnectionScheme::THREAD_POOLED},
-        SignalTestParameters{100, 100, 512, 50000, SignalConnectionScheme::THREAD_POOLED}
+    testing::Combine(
+        Values(1, 10, 100, 250), //number of connections
+        Values(100000, 1000000, 10000000, 100000000), //number of emissions per connection
+        Values(1, 4, 512), //elementsize
+        Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
+        Values(SignalConnectionScheme::SYNCHRONOUS, SignalConnectionScheme::ASYNCHRONOUS, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE, SignalConnectionScheme::THREAD_POOLED)
     )
 );
