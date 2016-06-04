@@ -17,6 +17,8 @@ using std::vector;
 using std::thread;
 using std::atomic;
 using std::fixed;
+using BSignals::Signal;
+using BSignals::SignalConnectionScheme;
 
 int globalStaticIntX = 0;
 struct BigThing{
@@ -357,7 +359,7 @@ INSTANTIATE_TEST_CASE_P(
     SignalTestParametrized,
     testing::Combine(
         Values(1, 10, 100, 250), //number of connections
-        Values(100000, 1000000, 10000000, 100000000), //number of emissions per connection
+        Values(1000, 10000, 100000, 1000000), //number of emissions per connection
         Values(1, 4, 512), //elementsize
         Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
         Values(SignalConnectionScheme::SYNCHRONOUS, SignalConnectionScheme::ASYNCHRONOUS, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE, SignalConnectionScheme::THREAD_POOLED)

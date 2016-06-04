@@ -23,11 +23,11 @@ struct SignalTestParameters{
     uint32_t nEmissions;
     uint32_t elementSize;
     uint32_t nOperations;
-    SignalConnectionScheme scheme;
+    BSignals::SignalConnectionScheme scheme;
 };
 
 class SignalTestParametrized : public SignalTest,
-        public testing::WithParamInterface< ::testing::tuple<uint32_t, uint32_t, uint32_t, uint32_t, SignalConnectionScheme> >{
+        public testing::WithParamInterface< ::testing::tuple<uint32_t, uint32_t, uint32_t, uint32_t, BSignals::SignalConnectionScheme> >{
 };
 
 #endif /* SIGNALTEST_H */
