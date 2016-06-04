@@ -49,6 +49,8 @@
     // be processed synchronously
 //
 
+namespace BSignals{
+
 enum class SignalConnectionScheme{
     SYNCHRONOUS,
     ASYNCHRONOUS, 
@@ -246,5 +248,7 @@ private:
         }
     }
 };
+
+} /* namespace BSignals */
 
 #endif /* SIGNAL_HPP */
