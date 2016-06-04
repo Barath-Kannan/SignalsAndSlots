@@ -59,8 +59,9 @@ enum class SignalConnectionScheme{
 template <typename... Args>
 class Signal {
 public:
-    Signal(uint16_t maxAsyncThreads = 100) : currentId(0), sem(maxAsyncThreads),
-        hasSynchronousSlots(false), hasAsynchronousSlots(false), hasAsynchronousEnqueueSlots(false), hasThreadPooledSlots(false)
+    //emissionGuard determines if it is necessary to guard emission with a shared mutex
+    //this is only required if connection/disconnection could be interleaved with emission
+    Signal(bool emissionGuard = false, uint16_t maxAsyncThreads = 100) : currentId(0), sem(maxAsyncThreads), enableEmissionGuard(emissionGuard)
     {}
     
     ~Signal(){
@@ -68,13 +69,13 @@ public:
     }
 
     template<typename F, typename I>
-    int connectMemberSlot(SignalConnectionScheme scheme, F&& function, I&& instance) const {
+    int connectMemberSlot(const SignalConnectionScheme &scheme, F&& function, I&& instance) const {
         //Construct a bound function from the function pointer and object
         auto boundFunc = objectBind(function, instance);
         return connectSlot(scheme, boundFunc);
     }
     
-    int connectSlot(SignalConnectionScheme scheme, std::function<void(Args...)> slot) const {
+    int connectSlot(const SignalConnectionScheme &scheme, std::function<void(Args...)> slot) const {
         std::unique_lock<std::shared_timed_mutex> lock(signalLock);
         uint32_t id = currentId.fetch_add(1);
         auto *slotMap = getSlotMap(scheme);
@@ -82,21 +83,11 @@ public:
         if (scheme == SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE){
             asyncQueues[id];
             asyncQueueThreads.emplace(id, std::thread(&Signal::queueListener, this, id));
-            hasAsynchronousEnqueueSlots = true;
-        }
-        else if (scheme == SignalConnectionScheme::ASYNCHRONOUS){
-            hasAsynchronousSlots = true;
-        }
-        else if (scheme == SignalConnectionScheme::THREAD_POOLED){
-            hasThreadPooledSlots = true;
-        }
-        else if (scheme == SignalConnectionScheme::SYNCHRONOUS){
-            hasSynchronousSlots = true;
         }
         return (int)id;
     }
     
-    void disconnectSlot(uint32_t id) const {
+    void disconnectSlot(const uint32_t &id) const {
         std::unique_lock<std::shared_timed_mutex> lock(signalLock);
         std::map<uint32_t, std::function<void(Args...)>> *slotMap = findSlotMapWithId(id);
         if (slotMap == nullptr)
@@ -127,35 +118,38 @@ public:
         threadPooledSlots.clear();
     }
     
-    void emitSignal(Args ... p) const {
-        //std::shared_lock<std::shared_timed_mutex> lock(signalLock);
-        if (hasSynchronousSlots){
-            for (auto const &slot : synchronousSlots){
-                runSynchronous(slot.second, p...);
-            }
+    void emitSignal(const Args &... p) const {
+        //wrapping the safe/thread-safe check like this seems to force the compiler
+        //to perform the flag check statically...investigate if there is a way to
+        //explicitly specify this
+        
+        return enableEmissionGuard ? emitSignalThreadSafe(p...) : emitSignalUnsafe(p...);
+    }
+    
+private:
+    void emitSignalUnsafe(const Args &... p) const {
+        for (auto const &slot : synchronousSlots){
+            runSynchronous(slot.second, p...);
         }
         
-        if (hasAsynchronousSlots){
-            for (auto const &slot : asynchronousSlots){
-                runAsynchronous(slot.second, p...);
-            }
+        for (auto const &slot : asynchronousSlots){
+            runAsynchronous(slot.second, p...);
         }
-
-        if (hasAsynchronousEnqueueSlots){
-            for (auto const &slot : asynchronousEnqueueSlots){
-                runAsynchronousEnqueued(slot.first, slot.second, p...);
-            }
+        
+        for (auto const &slot : asynchronousEnqueueSlots){
+            runAsynchronousEnqueued(slot.first, slot.second, p...);
         }
-
-        if (hasThreadPooledSlots){
-            for (auto const &slot : threadPooledSlots){
-                runThreadPooled(slot.second, p...);
-            }
+        
+        for (auto const &slot : threadPooledSlots){
+            runThreadPooled(slot.second, p...);
         }
     }
-
-private:
     
+    void emitSignalThreadSafe(const Args &... p) const {
+        std::shared_lock<std::shared_timed_mutex> lock(signalLock);
+        emitSignalUnsafe(p...);
+    }
+
     void runThreadPooled(const std::function<void(Args...)> &function, Args... p) const {
         ThreadPool::run<Args...>(function, p...);
     }
@@ -194,7 +188,7 @@ private:
         return objectBind(function, *instance);
     }
     
-    std::map<uint32_t, std::function<void(Args...)>> *getSlotMap(SignalConnectionScheme scheme) const{
+    std::map<uint32_t, std::function<void(Args...)>> *getSlotMap(const SignalConnectionScheme &scheme) const{
         switch(scheme){
             case (SignalConnectionScheme::ASYNCHRONOUS):
                 return &asynchronousSlots;
@@ -208,7 +202,7 @@ private:
         }
     }
     
-    std::map<uint32_t, std::function<void(Args...)>> *findSlotMapWithId(uint32_t id) const{
+    std::map<uint32_t, std::function<void(Args...)>> *findSlotMapWithId(const uint32_t &id) const{
         if (synchronousSlots.count(id))
             return &synchronousSlots;
         if (asynchronousSlots.count(id))
@@ -240,14 +234,9 @@ private:
     mutable std::map<uint32_t, std::function<void(Args...)>> asynchronousEnqueueSlots;
     mutable std::map<uint32_t, std::function<void(Args...)>> threadPooledSlots;
     
-    //Flags to determine if map needs to be checked - saves ~4 nanoseconds when
-    //executed on Signals where connected slots only have 1 connection scheme
-    mutable bool hasSynchronousSlots;
-    mutable bool hasAsynchronousSlots;
-    mutable bool hasAsynchronousEnqueueSlots;
-    mutable bool hasThreadPooledSlots;
-
-    void queueListener(uint32_t id) const{
+    const bool enableEmissionGuard;
+    
+    void queueListener(const uint32_t &id) const{
         auto &q = asyncQueues[id];    
         while (!q.isStopped()){
             auto func = q.dequeue();
