@@ -121,10 +121,6 @@ public:
     }
     
     void emitSignal(const Args &... p) const {
-        //wrapping the safe/thread-safe check like this seems to force the compiler
-        //to perform the flag check statically...investigate if there is a way to
-        //explicitly specify this
-        
         return enableEmissionGuard ? emitSignalThreadSafe(p...) : emitSignalUnsafe(p...);
     }
     

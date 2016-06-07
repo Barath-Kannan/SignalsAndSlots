@@ -10,7 +10,7 @@ using std::vector;
 using std::list;
 
 const uint16_t ThreadPool::maxPoolThreads = 8;
-MPMCQueue<std::function<void()>> ThreadPool::threadPooledFunctions(1000000);
+MPMCQueue<std::function<void()>> ThreadPool::threadPooledFunctions(10000000);
 std::thread ThreadPool::poolMonitorThread;
 atomic<uint32_t> ThreadPool::nThreads{0};
 atomic<uint32_t> ThreadPool::realTasks{0};
