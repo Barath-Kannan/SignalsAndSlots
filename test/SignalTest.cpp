@@ -9,6 +9,8 @@
 #include "BSignals/details/SafeQueue.hpp"
 #include "FunctionTimeRegular.hpp"
 
+using BSignals::details::SafeQueue;
+using BSignals::details::BasicTimer;
 using std::cout;
 using std::endl;
 using ::testing::Values;
@@ -365,7 +367,7 @@ INSTANTIATE_TEST_CASE_P(
         Values(1, 10, 100), //number of connections
         Values(1000, 10000, 100000, 1000000), //number of emissions per connection
         Values(1, 4, 512), //elementsize
-        Values(1, 10, 100, 1000, 10000, 50000, 1000000, 10000000), //number of operations in each function
+        Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
         Values(SignalConnectionScheme::SYNCHRONOUS)
         )
         );
@@ -377,7 +379,7 @@ INSTANTIATE_TEST_CASE_P(
         Values(1, 10, 100), //number of connections
         Values(1000, 10000, 100000, 1000000), //number of emissions per connection
         Values(1, 4, 512), //elementsize
-        Values(1, 10, 100, 1000, 10000, 50000, 1000000, 10000000), //number of operations in each function
+        Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
         Values(SignalConnectionScheme::ASYNCHRONOUS)
         )
         );
@@ -389,7 +391,7 @@ INSTANTIATE_TEST_CASE_P(
         Values(1, 10, 100), //number of connections
         Values(1000, 10000, 100000, 1000000), //number of emissions per connection
         Values(1, 4, 512), //elementsize
-        Values(1, 10, 100, 1000, 10000, 50000, 1000000, 10000000), //number of operations in each function
+        Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
         Values(SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE)
         )
         );
@@ -401,7 +403,7 @@ INSTANTIATE_TEST_CASE_P(
         Values(1, 10, 100), //number of connections
         Values(1000, 10000, 100000, 1000000), //number of emissions per connection
         Values(1, 4, 512), //elementsize
-        Values(1, 10, 100, 1000, 10000, 50000, 1000000, 10000000), //number of operations in each function
+        Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
         Values(SignalConnectionScheme::THREAD_POOLED)
         )
         );

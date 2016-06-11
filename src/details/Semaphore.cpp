@@ -1,5 +1,7 @@
 #include "BSignals/details/Semaphore.h"
 
+using BSignals::details::Semaphore;
+
 Semaphore::Semaphore(uint32_t size)
 : semCounter(size) {}
 

@@ -6,8 +6,11 @@
 #include <algorithm>
 #include "BSignals/details/BasicTimer.h"
 #include "BSignals/details/MPMCQueue.hpp"
+#include "BSignals/details/SafeQueue.hpp"
 
-
+using BSignals::details::BasicTimer;
+using BSignals::details::MPMCQueue;
+using BSignals::details::SafeQueue;
 using std::thread;
 using std::list;
 using std::cout;

@@ -1,6 +1,8 @@
 #include "BSignals/details/BasicTimer.h"
 #include <chrono>
 
+using BSignals::details::BasicTimer;
+
 BasicTimer::BasicTimer()
     : running(false) {}
 

@@ -16,6 +16,7 @@
 #include <condition_variable>
 #include <functional>
 
+namespace BSignals{ namespace details{
 template <class T>
 class MPMCQueue{
 public: 
@@ -145,5 +146,5 @@ private:
     std::vector<std::mutex> locks;
     std::vector<std::condition_variable> cvs;
 };
-
+}}
 #endif /* MPMCQUEUE_HPP */

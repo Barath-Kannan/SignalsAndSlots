@@ -8,6 +8,9 @@ using std::endl;
 using std::atomic;
 using std::vector;
 using std::list;
+using BSignals::details::BasicTimer;
+using BSignals::details::MPMCQueue;
+using BSignals::details::ThreadPool;
 
 const uint16_t ThreadPool::maxPoolThreads = 8;
 MPMCQueue<std::function<void()>> ThreadPool::threadPooledFunctions(10000000);

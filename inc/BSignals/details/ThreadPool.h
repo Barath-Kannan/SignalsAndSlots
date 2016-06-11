@@ -18,6 +18,8 @@
 #include <condition_variable>
 #include "BSignals/details/MPMCQueue.hpp"
 
+namespace BSignals{ namespace details{
+
 class ThreadPool {
 public:
     template <typename... Args>
@@ -39,11 +41,11 @@ private:
     static std::function<void()> bfc;
     static const uint16_t maxPoolThreads;
     static const uint16_t basePoolThreads;
-    static MPMCQueue<std::function<void()>> threadPooledFunctions;
+    static BSignals::details::MPMCQueue<std::function<void()>> threadPooledFunctions;
     static std::thread poolMonitorThread;
     static std::atomic<uint32_t> nThreads;
     static std::atomic<uint32_t> realTasks;
 };
-
+}}
 #endif /* THREADPOOL_H */
 

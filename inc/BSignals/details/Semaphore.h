@@ -13,6 +13,7 @@
 #include <mutex>
 #include <condition_variable>
 
+namespace BSignals{ namespace details{
 class Semaphore{
 public:
     Semaphore(uint32_t size);
@@ -25,6 +26,6 @@ private:
     std::condition_variable semCV;
     uint32_t semCounter;
 };
-
+}}
 #endif /* SEMAPHORE_H */
 

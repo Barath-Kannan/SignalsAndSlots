@@ -125,7 +125,7 @@ public:
     }
     
 private:
-    void emitSignalUnsafe(const Args &... p) const {
+    inline void emitSignalUnsafe(const Args &... p) const {
         for (auto const &slot : synchronousSlots){
             runSynchronous(slot.second, p...);
         }
@@ -143,16 +143,16 @@ private:
         }
     }
     
-    void emitSignalThreadSafe(const Args &... p) const {
+    inline void emitSignalThreadSafe(const Args &... p) const {
         std::shared_lock<std::shared_timed_mutex> lock(signalLock);
         emitSignalUnsafe(p...);
     }
 
-    void runThreadPooled(const std::function<void(Args...)> &function, Args... p) const {
-        ThreadPool::run<Args...>(function, p...);
+    inline void runThreadPooled(const std::function<void(Args...)> &function, Args... p) const {
+        BSignals::details::ThreadPool::run<Args...>(function, p...);
     }
     
-    void runAsynchronous(const std::function<void(Args...)> &function, Args... p) const {
+    inline void runAsynchronous(const std::function<void(Args...)> &function, Args... p) const {
         sem.acquire();
         std::thread slotThread([this, &function, p...](){
             function(p...);
@@ -161,14 +161,14 @@ private:
         slotThread.detach();
     }
     
-    void runAsynchronousEnqueued(uint32_t asyncQueueId, const std::function<void(Args...)> &function, Args... p) const{
+    inline void runAsynchronousEnqueued(uint32_t asyncQueueId, const std::function<void(Args...)> &function, Args... p) const{
         //bind the function arguments to the function using a lambda and store
         //the newly bound function. This changes the function signature in the
         //resultant map, there are no longer any parameters in the bound function
         asyncQueues[asyncQueueId].enqueue([&function, p...](){function(p...);});
     }
     
-    void runSynchronous(const std::function<void(Args...)> &function, Args... p) const{
+    inline void runSynchronous(const std::function<void(Args...)> &function, Args... p) const{
         function(p...);
     }
     
@@ -211,29 +211,7 @@ private:
             return &threadPooledSlots;
         return nullptr;
     }
-    
-    //shared mutex for thread safety
-    //emit acquires shared lock, connect/disconnect acquires unique lock
-    mutable std::shared_timed_mutex signalLock;
-    
-    //atomically incremented slotId
-    mutable std::atomic<uint32_t> currentId;
-    
-    //Async Emit Semaphore
-    mutable Semaphore sem;
         
-    //Async Enqueue Queues and Threads
-    mutable std::map<uint32_t, SafeQueue<std::function<void()>>> asyncQueues;
-    mutable std::map<uint32_t, std::thread> asyncQueueThreads;
-    
-    //Slot Maps
-    mutable std::map<uint32_t, std::function<void(Args...)>> synchronousSlots;
-    mutable std::map<uint32_t, std::function<void(Args...)>> asynchronousSlots;
-    mutable std::map<uint32_t, std::function<void(Args...)>> asynchronousEnqueueSlots;
-    mutable std::map<uint32_t, std::function<void(Args...)>> threadPooledSlots;
-    
-    const bool enableEmissionGuard;
-    
     void queueListener(const uint32_t &id) const{
         auto &q = asyncQueues[id];    
         while (!q.isStopped()){
@@ -243,6 +221,28 @@ private:
             func();
         }
     }
+    
+    //shared mutex for thread safety
+    //emit acquires shared lock, connect/disconnect acquires unique lock
+    mutable std::shared_timed_mutex signalLock;
+    
+    //atomically incremented slotId
+    mutable std::atomic<uint32_t> currentId;
+    
+    //Async Emit Semaphore
+    mutable BSignals::details::Semaphore sem;
+        
+    //Async Enqueue Queues and Threads
+    mutable std::map<uint32_t, BSignals::details::SafeQueue<std::function<void()>>> asyncQueues;
+    mutable std::map<uint32_t, std::thread> asyncQueueThreads;
+    
+    //Slot Maps
+    mutable std::map<uint32_t, std::function<void(Args...)>> synchronousSlots;
+    mutable std::map<uint32_t, std::function<void(Args...)>> asynchronousSlots;
+    mutable std::map<uint32_t, std::function<void(Args...)>> asynchronousEnqueueSlots;
+    mutable std::map<uint32_t, std::function<void(Args...)>> threadPooledSlots;
+    
+    const bool enableEmissionGuard;
 };
 
 } /* namespace BSignals */

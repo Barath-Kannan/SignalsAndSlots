@@ -1,11 +1,14 @@
 #include "SafeQueueTest.h"
-#include "BSignals/details/SafeQueue.hpp"
+
 #include <thread>
 #include <list>
 #include <iostream>
 
 #include "BSignals/details/BasicTimer.h"
+#include "BSignals/details/SafeQueue.hpp"
 
+using BSignals::details::SafeQueue;
+using BSignals::details::BasicTimer;
 using std::thread;
 using std::list;
 using std::cout;

@@ -13,6 +13,7 @@
 #include <condition_variable>
 #include <chrono>
 
+namespace BSignals{ namespace details{
 template <class T>
 class SafeQueue{
 public:
@@ -116,6 +117,6 @@ private:
     std::mutex m;
     std::condition_variable c;
 };
-
+}}
 #endif /* SAFEQUEUE_HPP */
 

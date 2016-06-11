@@ -11,6 +11,7 @@
 
 #include <chrono>
 
+namespace BSignals{ namespace details{
 class BasicTimer{
 public:
     BasicTimer();
@@ -29,6 +30,6 @@ protected:
     std::chrono::time_point<std::chrono::high_resolution_clock> begin, end;
     bool running;
 };
-
+}}
 #endif /* BASICTIMER_H */
 
