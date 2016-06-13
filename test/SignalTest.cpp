@@ -353,7 +353,6 @@ TEST_P(SignalTestParametrized, IntenseUsage) {
     cout << "Average emit time: " << (double) bt.getElapsedNanoseconds() / params.nEmissions << "ns" << endl;
     cout << "Time to emit+process: " << bt2.getElapsedMilliseconds() << "ms" << endl;
     cout << "Average emit+process time: " << (double) bt2.getElapsedNanoseconds() / params.nEmissions << "ns" << endl;
-    std::this_thread::sleep_for(std::chrono::seconds(1));
 }
 
 INSTANTIATE_TEST_CASE_P(
