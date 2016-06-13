@@ -44,9 +44,10 @@
     // Emitted parameters are bound to the mapped function and enqueued on the 
     // waiting thread. These messages are then processed synchronously in the
     // spawned thread.
-    // This method is recommended when quick emission is required, connected
-    // functions have longer execution time, and/or connected functions need to
-    // be processed in order of arrival (FIFO).
+    // This method is recommended when connected functions have longer execution
+    // time, the overhead of creating/destroying a thread for each slot would be
+    // unperformant, and/or connected functions need to be processed in order 
+    // of arrival (FIFO).
 
     // THREAD POOLED:
     // Emission occurs asynchronously. 
@@ -58,8 +59,11 @@
     // one of the waiting threads - acquisition of a thread is wait-free and
     // lock free. These messages are then processed when the relevant queue
     // is consumed by the mapped thread pool.
-    // This method is recommended when quick emission is required, connected
-    // functions have longer execution time, and order is irrelevant. This method
+    // This method is recommended when connected functions have longer execution
+    // time, the overhead of creating/destroying a thread for each slot would be
+    // unperformant, the overhead of a waiting thread for each slot is 
+    // unnecessary, and/or connected functions do NOT need to be processed in
+    // order of arrival.
 //
 
 namespace BSignals{
