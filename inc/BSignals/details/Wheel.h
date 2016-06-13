@@ -20,7 +20,6 @@ public:
     
     T& getSpoke(){
         return wheelymajig[fetchWrapIncrement(currentElement)];
-        //return wheelymajig[currentElement.fetch_add(1)%nElems];
     }
     
     T& getSpoke(uint32_t index){

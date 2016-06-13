@@ -28,8 +28,8 @@
     // Emission occurs synchronously.
     // When emit returns, all connected signals have returned.
     // This method is preferred when connected functions have short execution
-    // time or when it is necessary to know that the function has returned 
-    // before proceeding.
+    // time, quick emission is required, and/or when it is necessary to know 
+    // that the function has returned before proceeding.
 
     // ASYNCHRONOUS CONNECTION:
     // Emission occurs asynchronously. A detached thread is spawned on emission.
@@ -46,7 +46,20 @@
     // spawned thread.
     // This method is recommended when quick emission is required, connected
     // functions have longer execution time, and/or connected functions need to
-    // be processed synchronously
+    // be processed in order of arrival (FIFO).
+
+    // THREAD POOLED:
+    // Emission occurs asynchronously. 
+    // On connection, if it is the first thread pooled function by any signal, 
+    // the thread pool is initialized with 8 threads, all listening for queued
+    // emissions. The number of threads in the pool is not currently run-time
+    // configurable but may be in the future.
+    // Emitted parameters are bound to the mapped function and enqueued on the 
+    // one of the waiting threads - acquisition of a thread is wait-free and
+    // lock free. These messages are then processed when the relevant queue
+    // is consumed by the mapped thread pool.
+    // This method is recommended when quick emission is required, connected
+    // functions have longer execution time, and order is irrelevant. This method
 //
 
 namespace BSignals{

@@ -14,11 +14,6 @@
 #include "BSignals/details/Wheel.h"
 #include "BSignals/details/MPSCQueue.hpp"
 
-#include <iostream>
-#include "BSignals/details/BasicTimer.h"
-using std::cout;
-using std::endl;
-
 #ifndef WHEELEDTHREADPOOL_H
 #define WHEELEDTHREADPOOL_H
 
@@ -46,7 +41,7 @@ private:
         ~_init(); //destructor
     } _initializer;
     
-    static const uint32_t nThreads{4};
+    static const uint32_t nThreads{8};
     static std::mutex tpLock;
     static bool isStarted;
     static BSignals::details::Wheel<BSignals::details::mpsc_queue_t<std::function<void()>>, BSignals::details::WheeledThreadPool::nThreads> threadPooledFunctions;

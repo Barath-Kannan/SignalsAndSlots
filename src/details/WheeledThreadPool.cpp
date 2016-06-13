@@ -1,9 +1,5 @@
 #include "BSignals/details/WheeledThreadPool.h"
-#include <iostream>
 #include <algorithm>
-
-using std::cout;
-using std::endl;
 
 using std::mutex;
 using std::lock_guard;
@@ -54,7 +50,6 @@ void WheeledThreadPool::queueListener(uint32_t index) {
             waitTime*=2;
         }
         if (waitTime > std::chrono::milliseconds(1)){
-            cout << "Blocking dequeue" << endl;
             spoke.blocking_dequeue(func);
             func();
             waitTime = std::chrono::nanoseconds(1);
