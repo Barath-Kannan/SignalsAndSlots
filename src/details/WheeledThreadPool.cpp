@@ -10,15 +10,13 @@ using std::lock_guard;
 using std::atomic;
 using std::vector;
 using BSignals::details::Wheel;
+using BSignals::details::mpsc_queue_t;
 using BSignals::details::SafeQueue;
-using BSignals::details::MPMCQueue;
 using BSignals::details::WheeledThreadPool;
-using BSignals::details::ProducerConsumerQueue;
-using BSignals::details::SafeQueueVariant;
 
 std::mutex WheeledThreadPool::tpLock;
 bool WheeledThreadPool::isStarted = false;
-Wheel<moodycamel::BlockingConcurrentQueue<std::function<void()>>, BSignals::details::WheeledThreadPool::nThreads> WheeledThreadPool::threadPooledFunctions {};
+Wheel<mpsc_queue_t<std::function<void()>>, BSignals::details::WheeledThreadPool::nThreads> WheeledThreadPool::threadPooledFunctions {};
 std::vector<std::thread> WheeledThreadPool::queueMonitors;
 
 WheeledThreadPool::_init WheeledThreadPool::_initializer;
@@ -26,9 +24,6 @@ WheeledThreadPool::_init WheeledThreadPool::_initializer;
 WheeledThreadPool::_init::~_init() {
     std::lock_guard<mutex> lock(tpLock);
     isStarted = false;
-    for (uint32_t i=0; i<nThreads; i++){
-        threadPooledFunctions.getSpoke().enqueue(nullptr);
-    }
     for (auto &t : queueMonitors){
         t.join();
     }
@@ -47,11 +42,22 @@ void WheeledThreadPool::startup() {
 
 void WheeledThreadPool::queueListener(uint32_t index) {
     auto &spoke = threadPooledFunctions.getSpoke(index);
-    //while (!spoke.isStopped()){
     std::function<void()> func;
+    std::chrono::duration<double> waitTime = std::chrono::nanoseconds(1);
     while (isStarted){
-        spoke.wait_dequeue(func);
-        if (isStarted) func();    
+        if (spoke.dequeue(func)){
+            func();
+            waitTime = std::chrono::nanoseconds(1);
+        }
+        else{
+            std::this_thread::sleep_for(waitTime);
+            waitTime*=2;
+        }
+        if (waitTime > std::chrono::milliseconds(1)){
+            cout << "Blocking dequeue" << endl;
+            spoke.blocking_dequeue(func);
+            func();
+            waitTime = std::chrono::nanoseconds(1);
+        }
     }
 }
-
