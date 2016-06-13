@@ -1,41 +1,41 @@
 /* 
- * File:   SafeQueue.hpp
+ * File:   SafeQueueVariant.hpp
  * Author: Barath Kannan
  *
- * Created on April 21, 2016, 10:28 PM
+ * Created on June 13, 2016, 11:51 PM
  */
 
-#ifndef SAFEQUEUE_HPP
-#define SAFEQUEUE_HPP
+#ifndef SAFEQUEUEVARIANT_HPP
+#define SAFEQUEUEVARIANT_HPP
 
 #include <queue>
 #include <mutex>
+#include <shared_mutex>
 #include <condition_variable>
 #include <chrono>
-#include <vector>
 
 namespace BSignals{ namespace details{
 template <class T>
-class SafeQueue{
+class SafeQueueVariant{
 public:
     
     //Default constructed object is returned when forced stop is required
     //Otherwise, constructor parameters can be provided
     template<typename ...Args>
-    SafeQueue(Args&& ...args) : shutdownObject(args...), terminateFlag (false), q(), m(), c() {}
+    SafeQueueVariant(Args&& ...args) : shutdownObject(args...), terminateFlag (false), q(), m(), c() {}
     
-    ~SafeQueue(){
+    ~SafeQueueVariant(){
         stop();
     }
     
     void enqueue(const T &t){
-        std::lock_guard<std::mutex> lock(m);
+        std::shared_lock<std::shared_timed_mutex> lock(m);
         q.push(t);
         c.notify_one();
     }
     
     T dequeue(void){
-        std::unique_lock<std::mutex> lock(m);
+        std::unique_lock<std::shared_timed_mutex> lock(m);
         if (terminateFlag) return shutdownObject;
         while (q.empty()){
             c.wait(lock);
@@ -45,29 +45,11 @@ public:
         q.pop();
         return val;
     }
-    
-    std::vector<T> dequeueAll(){
-        std::unique_lock<std::mutex> lock(m);
-        while (q.empty()){
-            c.wait(lock);
-            if (terminateFlag){
-                std::vector<T> ret(1);
-                ret[0] = shutdownObject;
-                return ret;
-            }
-        }
-        std::vector<T> ret(q.size());
-        for (uint32_t i=0; !q.empty(); ++i){
-            ret[i] = q.front();
-            q.pop();
-        }
-        return ret;
-    }
 
     std::pair<T, bool> wait_for_dequeue(std::chrono::duration<double> timeout){
         std::pair<T, bool> ret;
         ret.second = false;
-        std::unique_lock<std::mutex> lock(m);
+        std::unique_lock<std::shared_timed_mutex> lock(m);
         if (terminateFlag){
             return ret;
         }
@@ -80,7 +62,7 @@ public:
     }
     
     std::pair<T, bool> nonBlockingDequeue(void){
-        std::unique_lock<std::mutex> lock(m);
+        std::unique_lock<std::shared_timed_mutex> lock(m);
         std::pair<T, bool> ret;
         if (!q.empty()){
             ret.first = q.front();
@@ -95,19 +77,19 @@ public:
     }
     
     void clear(){
-        std::lock_guard<std::mutex> lock(m);
+        std::lock_guard<std::shared_timed_mutex> lock(m);
         while (!q.empty()){
             q.pop();
         }
     }
     
     void wakeWaiters(){
-        std::unique_lock<std::mutex> lock(m);
+        std::unique_lock<std::shared_timed_mutex> lock(m);
         c.notify_all();
     }
     
     void wait(){
-        std::unique_lock<std::mutex> lock(m);
+        std::unique_lock<std::shared_timed_mutex> lock(m);
         if (terminateFlag) return;
         if (q.empty()){
             c.wait(lock);
@@ -116,7 +98,7 @@ public:
     
     bool wait(std::chrono::duration<double> timeout){
         auto start = std::chrono::high_resolution_clock::now();
-        std::unique_lock<std::mutex> lock(m);
+        std::unique_lock<std::shared_timed_mutex> lock(m);
         if (!q.empty()) return true;
         if (terminateFlag) return false;
         auto now = std::chrono::high_resolution_clock::now();
@@ -126,7 +108,7 @@ public:
     void stop(){
         terminateFlag = true;
         wakeWaiters();
-        std::unique_lock<std::mutex> lock(m);
+        std::unique_lock<std::shared_timed_mutex> lock(m);
         c.notify_all();
     }
     
@@ -135,12 +117,12 @@ public:
     }
     
     unsigned int size(){
-        std::lock_guard<std::mutex> lock(m);
+        std::lock_guard<std::shared_timed_mutex> lock(m);
         return q.size();
     }
     
     bool isEmpty(){
-        std::lock_guard<std::mutex> lock(m);
+        std::lock_guard<std::shared_timed_mutex> lock(m);
         return q.empty();
     }
     
@@ -148,8 +130,8 @@ private:
     T shutdownObject;
     bool terminateFlag;
     std::queue<T> q;
-    std::mutex m;
-    std::condition_variable c;
+    std::shared_timed_mutex m;
+    std::condition_variable_any c;
 };
 }}
 #endif /* SAFEQUEUE_HPP */

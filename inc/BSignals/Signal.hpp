@@ -20,7 +20,7 @@
 #include <type_traits>
 
 #include "BSignals/details/SafeQueue.hpp"
-#include "BSignals/details/ThreadPool.h"
+#include "BSignals/details/WheeledThreadPool.h"
 #include "BSignals/details/Semaphore.h"
 
 //These connection schemes determine how message emission to a connection occurs
@@ -55,23 +55,33 @@ enum class SignalConnectionScheme{
     SYNCHRONOUS,
     ASYNCHRONOUS, 
     ASYNCHRONOUS_ENQUEUE,
-    THREAD_POOLED /*thread pooled mode in development*/
+    THREAD_POOLED
 };
 
 template <typename... Args>
 class Signal {
 public:
-    //emissionGuard determines if it is necessary to guard emission with a shared mutex
-    //this is only required if connection/disconnection could be interleaved with emission
-    Signal(bool emissionGuard = false, uint16_t maxAsyncThreads = 100) : currentId(0), sem(maxAsyncThreads), enableEmissionGuard(emissionGuard)
-    {}
+    Signal() = default;
+    
+    Signal(bool enforceThreadSafety) 
+        : enableEmissionGuard{enforceThreadSafety} {}
+        
+    Signal(uint32_t maxAsyncThreads) 
+        : sem{maxAsyncThreads} {}
+        
+    Signal(bool enforceThreadSafety, uint32_t maxAsyncThreads) 
+        : enableEmissionGuard{enforceThreadSafety}, sem{maxAsyncThreads} {}
     
     ~Signal(){
         disconnectAllSlots();
     }
 
-    template<typename F, typename I>
-    int connectMemberSlot(const SignalConnectionScheme &scheme, F&& function, I&& instance) const {
+    template<typename F, typename C>
+    int connectMemberSlot(const SignalConnectionScheme &scheme, F&& function, C&& instance) const {
+        //type check assertions
+        static_assert(std::is_member_function_pointer<F>::value, "function is not a member function");
+        static_assert(std::is_object<std::remove_reference<C>>::value, "instance is not a class object");
+        
         //Construct a bound function from the function pointer and object
         auto boundFunc = objectBind(function, instance);
         return connectSlot(scheme, boundFunc);
@@ -86,14 +96,16 @@ public:
             asyncQueues[id];
             asyncQueueThreads.emplace(id, std::thread(&Signal::queueListener, this, id));
         }
+        else if (scheme == SignalConnectionScheme::THREAD_POOLED){
+            BSignals::details::WheeledThreadPool::startup();
+        }
         return (int)id;
     }
     
     void disconnectSlot(const uint32_t &id) const {
         std::unique_lock<std::shared_timed_mutex> lock(signalLock);
         std::map<uint32_t, std::function<void(Args...)>> *slotMap = findSlotMapWithId(id);
-        if (slotMap == nullptr)
-            return;
+        if (slotMap == nullptr) return;
         if (slotMap == &asynchronousEnqueueSlots){
             asyncQueues[id].stop();
             asyncQueueThreads[id].join();
@@ -148,27 +160,27 @@ private:
         emitSignalUnsafe(p...);
     }
 
-    inline void runThreadPooled(const std::function<void(Args...)> &function, Args... p) const {
-        BSignals::details::ThreadPool::run<Args...>(function, p...);
+    inline void runThreadPooled(const std::function<void(Args...)> &function, const Args &... p) const {
+        BSignals::details::WheeledThreadPool::run([&function, p...](){function(p...);});
     }
     
-    inline void runAsynchronous(const std::function<void(Args...)> &function, Args... p) const {
+    inline void runAsynchronous(const std::function<void(Args...)> &function, const Args &... p) const {
         sem.acquire();
-        std::thread slotThread([this, &function, p...](){
+        std::thread slotThread([this, function, p...](){
             function(p...);
             sem.release();                
         });
         slotThread.detach();
     }
     
-    inline void runAsynchronousEnqueued(uint32_t asyncQueueId, const std::function<void(Args...)> &function, Args... p) const{
+    inline void runAsynchronousEnqueued(uint32_t asyncQueueId, const std::function<void(Args...)> &function, const Args &... p) const{
         //bind the function arguments to the function using a lambda and store
         //the newly bound function. This changes the function signature in the
         //resultant map, there are no longer any parameters in the bound function
         asyncQueues[asyncQueueId].enqueue([&function, p...](){function(p...);});
     }
     
-    inline void runSynchronous(const std::function<void(Args...)> &function, Args... p) const{
+    inline void runSynchronous(const std::function<void(Args...)> &function, const Args &... p) const{
         function(p...);
     }
     
@@ -227,11 +239,15 @@ private:
     mutable std::shared_timed_mutex signalLock;
     
     //atomically incremented slotId
-    mutable std::atomic<uint32_t> currentId;
+    mutable std::atomic<uint32_t> currentId {0};
     
     //Async Emit Semaphore
-    mutable BSignals::details::Semaphore sem;
-        
+    mutable BSignals::details::Semaphore sem {128};
+    
+    //emissionGuard determines if it is necessary to guard emission with a shared mutex
+    //this is only required if connection/disconnection could be interleaved with emission
+    const bool enableEmissionGuard {false};
+    
     //Async Enqueue Queues and Threads
     mutable std::map<uint32_t, BSignals::details::SafeQueue<std::function<void()>>> asyncQueues;
     mutable std::map<uint32_t, std::thread> asyncQueueThreads;
@@ -241,8 +257,7 @@ private:
     mutable std::map<uint32_t, std::function<void(Args...)>> asynchronousSlots;
     mutable std::map<uint32_t, std::function<void(Args...)>> asynchronousEnqueueSlots;
     mutable std::map<uint32_t, std::function<void(Args...)>> threadPooledSlots;
-    
-    const bool enableEmissionGuard;
+
 };
 
 } /* namespace BSignals */

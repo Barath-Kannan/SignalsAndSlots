@@ -39,7 +39,7 @@ CC = g++
 
 #Compiler options
 OPTS = -Wall -std=c++14 -fPIC
-RELEASE_OPTS = -O3
+RELEASE_OPTS = -O2
 DEBUG_OPTS = -g
 
 #Static library archiver

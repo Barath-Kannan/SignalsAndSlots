@@ -266,7 +266,7 @@ TEST_F(SignalTest, MemberFunction) {
 
 TEST_P(SignalTestParametrized, IntenseUsage) {
     auto tupleParams = GetParam();
-    SignalTestParameters params = {::testing::get<0>(tupleParams), ::testing::get<1>(tupleParams), ::testing::get<2>(tupleParams), ::testing::get<3>(tupleParams), ::testing::get<4>(tupleParams)};
+    SignalTestParameters params = {::testing::get<0>(tupleParams), ::testing::get<1>(tupleParams), ::testing::get<2>(tupleParams), ::testing::get<3>(tupleParams)};
     BasicTimer bt, bt2;
 
     cout << "Intense usage test for signal type: ";
@@ -289,24 +289,19 @@ TEST_P(SignalTestParametrized, IntenseUsage) {
     atomic<uint32_t> completedFunctions;
     completedFunctions = 0;
     cout << "Emissions: " << params.nEmissions << ", Connections: " << params.nConnections <<
-            ", Element Size: " << params.elementSize << ", Operations: " << params.nOperations << endl;
+            ", Operations: " << params.nOperations << endl;
 
     typedef uint32_t sigType;
     auto func = ([&params, &completedFunctions](sigType x) {
-        //vector<sigType> v(params.elementSize);
-        volatile sigType v;
         for (uint32_t i = 0; i < params.nOperations; i++) {
-            //for (uint32_t j = 0; j < params.elementSize; j++) {
-            v = x;
-                //x+=1;
-            //}
+            volatile sigType v = x;
         }
         completedFunctions++;
     });
 
 //    bt.start();
 //    for (uint32_t i = 0; i < 10000; i++) {
-//        func(sigType(params.elementSize));
+//        func(sigType{i});
 //    }
 //    bt.stop();
 //    completedFunctions -= 10000;
@@ -331,9 +326,9 @@ TEST_P(SignalTestParametrized, IntenseUsage) {
     }, std::chrono::milliseconds(1));
 
     cout << "Starting emission thread: " << endl;
+    
     thread emitter([&params, &signal, &bt, &bt2, &counter]() {
-        sigType emitval(params.elementSize);
-        //sigType emitval = params.elementSize;
+        sigType emitval = 1;
         bt2.start();
         bt.start();
         for (uint32_t i = 0; i < params.nEmissions; i++) {
@@ -346,7 +341,7 @@ TEST_P(SignalTestParametrized, IntenseUsage) {
     cout << "Emission thread spawned" << endl;
     cout.precision(std::numeric_limits<double>::max_digits10);
 
-    ASSERT_LE(bt2.getElapsedSeconds(), 60);
+    //ASSERT_LE(bt2.getElapsedSeconds(), 60);
     emitter.join();
     cout << "Emission completed" << endl;
     checkFinished.join();
@@ -364,9 +359,8 @@ INSTANTIATE_TEST_CASE_P(
         SignalTest_Benchmark_Synchronous,
         SignalTestParametrized,
         testing::Combine(
-        Values(1, 10, 100), //number of connections
-        Values(1000, 10000, 100000, 1000000), //number of emissions per connection
-        Values(1, 4, 512), //elementsize
+        Values(1, 10, 50), //number of connections
+        Values(10, 1000, 10000), //number of emissions per connection
         Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
         Values(SignalConnectionScheme::SYNCHRONOUS)
         )
@@ -376,9 +370,8 @@ INSTANTIATE_TEST_CASE_P(
         SignalTest_Benchmark_Asynchronous,
         SignalTestParametrized,
         testing::Combine(
-        Values(1, 10, 100), //number of connections
-        Values(1000, 10000, 100000, 1000000), //number of emissions per connection
-        Values(1, 4, 512), //elementsize
+        Values(1, 10, 50), //number of connections
+        Values(10, 1000, 10000), //number of emissions per connection
         Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
         Values(SignalConnectionScheme::ASYNCHRONOUS)
         )
@@ -388,9 +381,8 @@ INSTANTIATE_TEST_CASE_P(
         SignalTest_Benchmark_AsynchronousEnqueue,
         SignalTestParametrized,
         testing::Combine(
-        Values(1, 10, 100), //number of connections
-        Values(1000, 10000, 100000, 1000000), //number of emissions per connection
-        Values(1, 4, 512), //elementsize
+        Values(1, 10, 50), //number of connections
+        Values(10, 1000, 10000), //number of emissions per connection
         Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
         Values(SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE)
         )
@@ -400,10 +392,20 @@ INSTANTIATE_TEST_CASE_P(
         SignalTest_Benchmark_ThreadPooled,
         SignalTestParametrized,
         testing::Combine(
-        Values(1, 10, 100), //number of connections
-        Values(1000, 10000, 100000, 1000000), //number of emissions per connection
-        Values(1, 4, 512), //elementsize
+        Values(1, 10, 50), //number of connections
+        Values(10, 1000, 10000), //number of emissions per connection
         Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
         Values(SignalConnectionScheme::THREAD_POOLED)
+        )
+        );
+
+INSTANTIATE_TEST_CASE_P(
+        SignalTest_Benchmark_PureEmission,
+        SignalTestParametrized,
+        testing::Combine(
+        Values(1), //nconnections
+        Values(1000000), //number of emissions
+        Values(1), //number of operations
+        Values(SignalConnectionScheme::SYNCHRONOUS, SignalConnectionScheme::ASYNCHRONOUS, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE, SignalConnectionScheme::THREAD_POOLED)
         )
         );
