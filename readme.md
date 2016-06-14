@@ -33,11 +33,15 @@ For static linking, an archive is generated in
     
     {BASE_DIRECTORY}/gen/release/lib/static
     
-Google unit tests binary is generated in
+The gtest binary is generated in
     
     {BASE_DIRECTORY}/gen/release/test
     
 ##Usage
+
+Below is a summary of how to use the Signal class.
+
+For more examples, see SignalTest.cpp in the test directory.
 
 ####Simple Usage Example
     #include <iostream>
@@ -172,7 +176,7 @@ the overhead of a waiting thread for each slot (as in the strand executor scheme
 is unnecessary, and/or connected functions do NOT need to be processed in order
 of arrival.  
 
-##To do
+##To Do
 - Dynamically scaling thread pool (based on business)
 - Weighted round robin in thread pool (based on remaining tasks in each queue)
 - Add executor for signal localised thread pool, as opposed to current global
