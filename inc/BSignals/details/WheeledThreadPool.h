@@ -11,7 +11,7 @@
 #include <thread>
 #include <mutex>
 #include "BSignals/details/SafeQueue.hpp"
-#include "BSignals/details/Wheel.h"
+#include "BSignals/details/Wheel.hpp"
 #include "BSignals/details/MPSCQueue.hpp"
 
 #ifndef WHEELEDTHREADPOOL_H
