@@ -1,5 +1,9 @@
 #include "BSignals/details/WheeledThreadPool.h"
+#include "BSignals/details/BasicTimer.h"
 #include <algorithm>
+#include <iostream>
+using std::cout;
+using std::endl;
 
 using std::mutex;
 using std::lock_guard;
@@ -9,17 +13,35 @@ using BSignals::details::Wheel;
 using BSignals::details::mpsc_queue_t;
 using BSignals::details::SafeQueue;
 using BSignals::details::WheeledThreadPool;
+using BSignals::details::BasicTimer;
 
 std::mutex WheeledThreadPool::tpLock;
 bool WheeledThreadPool::isStarted = false;
+std::chrono::duration<double> WheeledThreadPool::maxWait;
 Wheel<mpsc_queue_t<std::function<void()>>, BSignals::details::WheeledThreadPool::nThreads> WheeledThreadPool::threadPooledFunctions {};
 std::vector<std::thread> WheeledThreadPool::queueMonitors;
 
 WheeledThreadPool::_init WheeledThreadPool::_initializer;
 
+WheeledThreadPool::_init::_init(){
+    //make a conservative estimate of when blocking will
+    //be faster than spinning
+    BasicTimer bt;
+    mpsc_queue_t<int> tq;
+    tq.enqueue(0);
+    int x;
+    bt.start();
+    tq.blocking_dequeue(x);
+    bt.stop();
+    maxWait = bt.getElapsedDuration()*2;
+}
+
 WheeledThreadPool::_init::~_init() {
     std::lock_guard<mutex> lock(tpLock);
     isStarted = false;
+    for (uint32_t i=0; i<nThreads; i++){
+        threadPooledFunctions.getSpoke(i).enqueue(nullptr);
+    }
     for (auto &t : queueMonitors){
         t.join();
     }
@@ -32,8 +54,11 @@ void WheeledThreadPool::startup() {
         for (unsigned int i=0; i<nThreads; ++i){
             queueMonitors.emplace_back(queueListener, i);
         }
-        
     }
+}
+
+std::chrono::duration<double> WheeledThreadPool::getMaxWait() {
+    return maxWait;
 }
 
 void WheeledThreadPool::queueListener(uint32_t index) {
@@ -42,16 +67,16 @@ void WheeledThreadPool::queueListener(uint32_t index) {
     std::chrono::duration<double> waitTime = std::chrono::nanoseconds(1);
     while (isStarted){
         if (spoke.dequeue(func)){
-            func();
+            if (func) func();
             waitTime = std::chrono::nanoseconds(1);
         }
         else{
             std::this_thread::sleep_for(waitTime);
             waitTime*=2;
         }
-        if (waitTime > std::chrono::milliseconds(1)){
+        if (waitTime > maxWait){
             spoke.blocking_dequeue(func);
-            func();
+            if (func) func();
             waitTime = std::chrono::nanoseconds(1);
         }
     }

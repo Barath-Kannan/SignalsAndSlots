@@ -20,7 +20,7 @@ using std::thread;
 using std::atomic;
 using std::fixed;
 using BSignals::Signal;
-using BSignals::SignalConnectionScheme;
+using BSignals::ExecutorScheme;
 
 int globalStaticIntX = 0;
 
@@ -53,7 +53,7 @@ TEST_F(SignalTest, SynchronousSignal) {
     BasicTimer bt;
     cout << "Connecting signal" << endl;
     bt.start();
-    int id = testSignal.connectSlot(SignalConnectionScheme::SYNCHRONOUS, staticSumFunction);
+    int id = testSignal.connectSlot(ExecutorScheme::SYNCHRONOUS, staticSumFunction);
     bt.stop();
     cout << "Time to connect: " << bt.getElapsedMilliseconds() << "ms" << endl;
 
@@ -79,7 +79,7 @@ TEST_F(SignalTest, AsychronousSignal) {
     BasicTimer bt2;
     cout << "Connecting signal" << endl;
     bt.start();
-    int id = testSignal.connectSlot(SignalConnectionScheme::ASYNCHRONOUS, staticSumFunction);
+    int id = testSignal.connectSlot(ExecutorScheme::ASYNCHRONOUS, staticSumFunction);
     bt.stop();
     cout << "Time to connect: " << bt.getElapsedMilliseconds() << "ms" << endl;
 
@@ -118,7 +118,7 @@ TEST_F(SignalTest, AsychronousEnqueueSignal) {
     BasicTimer bt2;
     cout << "Connecting signal" << endl;
     bt.start();
-    int id = testSignal.connectSlot(SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE, staticSumFunction);
+    int id = testSignal.connectSlot(ExecutorScheme::STRAND, staticSumFunction);
     bt.stop();
     cout << "Time to connect: " << bt.getElapsedMilliseconds() << "ms" << endl;
 
@@ -154,9 +154,9 @@ TEST_F(SignalTest, MultipleConnectionTypes) {
 
     cout << "Connecting signals" << endl;
     list<int> ids;
-    ids.push_back(testSignal.connectSlot(SignalConnectionScheme::SYNCHRONOUS, pushToQueue));
-    ids.push_back(testSignal.connectSlot(SignalConnectionScheme::ASYNCHRONOUS, pushToQueue));
-    ids.push_back(testSignal.connectSlot(SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE, pushToQueue));
+    ids.push_back(testSignal.connectSlot(ExecutorScheme::SYNCHRONOUS, pushToQueue));
+    ids.push_back(testSignal.connectSlot(ExecutorScheme::ASYNCHRONOUS, pushToQueue));
+    ids.push_back(testSignal.connectSlot(ExecutorScheme::STRAND, pushToQueue));
 
     cout << "Emitting signal" << endl;
     BasicTimer bt;
@@ -189,7 +189,7 @@ public:
 
     TestClass() {
         counter = 0;
-        internalSignal.connectMemberSlot(SignalConnectionScheme::SYNCHRONOUS, &TestClass::incrementCounter, this);
+        internalSignal.connectMemberSlot(ExecutorScheme::SYNCHRONOUS, &TestClass::incrementCounter, this);
     }
 
     ~TestClass() {
@@ -233,8 +233,8 @@ TEST_F(SignalTest, MemberFunction) {
     TestClass tc;
     Signal<int> testSignal;
 
-    testSignal.connectMemberSlot(SignalConnectionScheme::SYNCHRONOUS, &TestClass::dostuff, tc);
-    testSignal.connectMemberSlot(SignalConnectionScheme::SYNCHRONOUS, &TestClass::dostuffconst, tc);
+    testSignal.connectMemberSlot(ExecutorScheme::SYNCHRONOUS, &TestClass::dostuff, tc);
+    testSignal.connectMemberSlot(ExecutorScheme::SYNCHRONOUS, &TestClass::dostuffconst, tc);
 
     testSignal.emitSignal(1);
 
@@ -244,13 +244,13 @@ TEST_F(SignalTest, MemberFunction) {
 
     ASSERT_EQ(tc.getCounter(), 3u);
 
-    testSignal.connectMemberSlot(SignalConnectionScheme::SYNCHRONOUS, &TestClass::dostuff, &tc);
+    testSignal.connectMemberSlot(ExecutorScheme::SYNCHRONOUS, &TestClass::dostuff, &tc);
 
     testSignal.emitSignal(1);
     ASSERT_EQ(tc.getCounter(), 6u);
 
     const Signal<int> testSignal2;
-    testSignal2.connectMemberSlot(SignalConnectionScheme::SYNCHRONOUS, &TestClass::dostuffconst, tc);
+    testSignal2.connectMemberSlot(ExecutorScheme::SYNCHRONOUS, &TestClass::dostuffconst, tc);
 
     testSignal2.emitSignal(1);
 
@@ -258,8 +258,8 @@ TEST_F(SignalTest, MemberFunction) {
 
     const TestClass tc2;
 
-    testSignal2.connectMemberSlot(SignalConnectionScheme::SYNCHRONOUS, &TestClass::dostuffconst, tc2);
-    testSignal2.connectMemberSlot(SignalConnectionScheme::SYNCHRONOUS, &TestClass::dostuffconst, &tc2);
+    testSignal2.connectMemberSlot(ExecutorScheme::SYNCHRONOUS, &TestClass::dostuffconst, tc2);
+    testSignal2.connectMemberSlot(ExecutorScheme::SYNCHRONOUS, &TestClass::dostuffconst, &tc2);
     testSignal2.emitSignal(1);
     ASSERT_EQ(tc2.getCounter(), 2u);
 }
@@ -271,16 +271,16 @@ TEST_P(SignalTestParametrized, IntenseUsage) {
 
     cout << "Intense usage test for signal type: ";
     switch (params.scheme) {
-        case(SignalConnectionScheme::ASYNCHRONOUS):
+        case(ExecutorScheme::ASYNCHRONOUS):
             cout << "Asynchronous";
             break;
-        case(SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE):
+        case(ExecutorScheme::STRAND):
             cout << "Asynchronous Enqueue";
             break;
-        case(SignalConnectionScheme::SYNCHRONOUS):
+        case(ExecutorScheme::SYNCHRONOUS):
             cout << "Synchronous";
             break;
-        case (SignalConnectionScheme::THREAD_POOLED):
+        case (ExecutorScheme::THREAD_POOLED):
             cout << "Thread Pooled";
             break;
     }
@@ -362,7 +362,7 @@ INSTANTIATE_TEST_CASE_P(
         Values(1, 10, 50), //number of connections
         Values(10, 1000, 10000), //number of emissions per connection
         Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
-        Values(SignalConnectionScheme::SYNCHRONOUS)
+        Values(ExecutorScheme::SYNCHRONOUS)
         )
         );
 
@@ -373,7 +373,7 @@ INSTANTIATE_TEST_CASE_P(
         Values(1, 10, 50), //number of connections
         Values(10, 1000, 10000), //number of emissions per connection
         Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
-        Values(SignalConnectionScheme::ASYNCHRONOUS)
+        Values(ExecutorScheme::ASYNCHRONOUS)
         )
         );
 
@@ -384,7 +384,7 @@ INSTANTIATE_TEST_CASE_P(
         Values(1, 10, 50), //number of connections
         Values(10, 1000, 10000), //number of emissions per connection
         Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
-        Values(SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE)
+        Values(ExecutorScheme::STRAND)
         )
         );
 
@@ -395,7 +395,7 @@ INSTANTIATE_TEST_CASE_P(
         Values(1, 10, 50), //number of connections
         Values(10, 1000, 10000), //number of emissions per connection
         Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
-        Values(SignalConnectionScheme::THREAD_POOLED)
+        Values(ExecutorScheme::THREAD_POOLED)
         )
         );
 
@@ -404,8 +404,8 @@ INSTANTIATE_TEST_CASE_P(
         SignalTestParametrized,
         testing::Combine(
         Values(1), //nconnections
-        Values(1000000), //number of emissions
+        Values(10000), //number of emissions
         Values(1), //number of operations
-        Values(SignalConnectionScheme::SYNCHRONOUS, SignalConnectionScheme::ASYNCHRONOUS, SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE, SignalConnectionScheme::THREAD_POOLED)
+        Values(ExecutorScheme::SYNCHRONOUS, ExecutorScheme::ASYNCHRONOUS, ExecutorScheme::STRAND, ExecutorScheme::THREAD_POOLED)
         )
         );

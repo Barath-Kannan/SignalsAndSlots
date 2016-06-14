@@ -23,23 +23,26 @@
 
 // For more information, please refer to <http://unlicense.org/>
 
-// C++ implementation of Dmitry Vyukov's non-intrusive lock free unbound MPSC queue
+// C++ implementation of Dmitry Vyukov's non-intrusive lock free unbounded MPSC queue
 // http://www.1024cores.net/home/lock-free-algorithms/queues/non-intrusive-mpsc-node-based-queue
 /* 
  * File:   MPSCQueue.hpp
  * Author: Barath Kannan
  * This is an adaptation of https://github.com/mstump/queues/blob/master/include/mpsc-queue.hpp
  * The queue has been modified such that it can also be used as a blocking queue
+ * Aligned storage was removed, was causing segmentation faults and didn't improve performance
  * Created on 14 June 2016, 1:14 AM
  */
 
 
-#ifndef __MPSC_BOUNDED_QUEUE_INCLUDED__
-#define __MPSC_BOUNDED_QUEUE_INCLUDED__
+#ifndef MPSCQUEUE_HPP
+#define MPSCQUEUE_HPP
 
 #include <atomic>
 #include <shared_mutex>
 #include <condition_variable>
+#include <chrono>
+#include <thread>
 #include <assert.h>
 
 namespace BSignals{ namespace details{
@@ -50,7 +53,7 @@ class mpsc_queue_t
 public:
 
     mpsc_queue_t() :
-        _head(reinterpret_cast<buffer_node_t*>(new buffer_node_aligned_t)),
+        _head(new buffer_node_t),
         _tail(_head.load(std::memory_order_relaxed)){
         buffer_node_t* front = _head.load(std::memory_order_relaxed);
         front->next.store(nullptr, std::memory_order_relaxed);
@@ -64,7 +67,7 @@ public:
     }
     
     void enqueue(const T& input){
-        buffer_node_t* node = reinterpret_cast<buffer_node_t*>(new buffer_node_aligned_t);
+        buffer_node_t* node = (new buffer_node_t);
         node->data = input;
         node->next.store(nullptr, std::memory_order_relaxed);
 
@@ -95,7 +98,7 @@ public:
             _cv.wait(_mutex);
         }
     }
-
+    
 private:
 
     struct buffer_node_t
@@ -104,16 +107,14 @@ private:
         std::atomic<buffer_node_t*> next;
     };
 
-    typedef typename std::aligned_storage<sizeof(buffer_node_t), std::alignment_of<buffer_node_t>::value>::type buffer_node_aligned_t;
-
     std::atomic<buffer_node_t*> _head;
     std::atomic<buffer_node_t*> _tail;
     std::shared_timed_mutex _mutex;
     std::condition_variable_any _cv;
-    std::atomic<bool> dataAvailable;
     
     mpsc_queue_t(const mpsc_queue_t&) {}
     void operator=(const mpsc_queue_t&) {}
 };
 }}
+
 #endif

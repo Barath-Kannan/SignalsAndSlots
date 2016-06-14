@@ -20,27 +20,28 @@
 #include <type_traits>
 
 #include "BSignals/details/SafeQueue.hpp"
+#include "BSignals/details/MPSCQueue.hpp"
 #include "BSignals/details/WheeledThreadPool.h"
 #include "BSignals/details/Semaphore.h"
 
-//These connection schemes determine how message emission to a connection occurs
-    // SYNCHRONOUS CONNECTION:
+//These executors determine how message emission to a slot occurs
+    // SYNCHRONOUS:
     // Emission occurs synchronously.
     // When emit returns, all connected signals have returned.
     // This method is preferred when connected functions have short execution
     // time, quick emission is required, and/or when it is necessary to know 
     // that the function has returned before proceeding.
 
-    // ASYNCHRONOUS CONNECTION:
+    // ASYNCHRONOUS:
     // Emission occurs asynchronously. A detached thread is spawned on emission.
     // When emit returns, the thread has been spawned. The thread automatically
     // destructs when the connected function returns.
     // This method is recommended when connected functions have long execution
     // time and are independent.
 
-    // ASYNCHRONOUS ENQUEUED CONNECTION:
+    // STRAND:
     // Emission occurs asynchronously. 
-    // On connection a dedicated thread is spawned to wait for new messages.
+    // On connection a dedicated thread (per slot) is spawned to wait for new messages.
     // Emitted parameters are bound to the mapped function and enqueued on the 
     // waiting thread. These messages are then processed synchronously in the
     // spawned thread.
@@ -56,7 +57,7 @@
     // emissions. The number of threads in the pool is not currently run-time
     // configurable but may be in the future.
     // Emitted parameters are bound to the mapped function and enqueued on the 
-    // one of the waiting threads - acquisition of a thread is wait-free and
+    // one of the waiting threads - acquisition of a queue is wait-free and
     // lock free. These messages are then processed when the relevant queue
     // is consumed by the mapped thread pool.
     // This method is recommended when connected functions have longer execution
@@ -68,10 +69,10 @@
 
 namespace BSignals{
 
-enum class SignalConnectionScheme{
+enum class ExecutorScheme{
     SYNCHRONOUS,
     ASYNCHRONOUS, 
-    ASYNCHRONOUS_ENQUEUE,
+    STRAND,
     THREAD_POOLED
 };
 
@@ -94,7 +95,7 @@ public:
     }
 
     template<typename F, typename C>
-    int connectMemberSlot(const SignalConnectionScheme &scheme, F&& function, C&& instance) const {
+    int connectMemberSlot(const ExecutorScheme &scheme, F&& function, C&& instance) const {
         //type check assertions
         static_assert(std::is_member_function_pointer<F>::value, "function is not a member function");
         static_assert(std::is_object<std::remove_reference<C>>::value, "instance is not a class object");
@@ -104,16 +105,16 @@ public:
         return connectSlot(scheme, boundFunc);
     }
     
-    int connectSlot(const SignalConnectionScheme &scheme, std::function<void(Args...)> slot) const {
+    int connectSlot(const ExecutorScheme &scheme, std::function<void(Args...)> slot) const {
         std::unique_lock<std::shared_timed_mutex> lock(signalLock);
         uint32_t id = currentId.fetch_add(1);
         auto *slotMap = getSlotMap(scheme);
         slotMap->emplace(id, slot);
-        if (scheme == SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE){
-            asyncQueues[id];
-            asyncQueueThreads.emplace(id, std::thread(&Signal::queueListener, this, id));
+        if (scheme == ExecutorScheme::STRAND){
+            strandQueues[id];
+            strandThreads.emplace(id, std::thread(&Signal::queueListener, this, id));
         }
-        else if (scheme == SignalConnectionScheme::THREAD_POOLED){
+        else if (scheme == ExecutorScheme::THREAD_POOLED){
             BSignals::details::WheeledThreadPool::startup();
         }
         return (int)id;
@@ -123,29 +124,29 @@ public:
         std::unique_lock<std::shared_timed_mutex> lock(signalLock);
         std::map<uint32_t, std::function<void(Args...)>> *slotMap = findSlotMapWithId(id);
         if (slotMap == nullptr) return;
-        if (slotMap == &asynchronousEnqueueSlots){
-            asyncQueues[id].stop();
-            asyncQueueThreads[id].join();
-            asyncQueueThreads.erase(id);
-            asyncQueues.erase(id);
+        if (slotMap == &strandSlots){
+            strandQueues[id].enqueue(nullptr);
+            strandThreads[id].join();
+            strandThreads.erase(id);
+            strandQueues.erase(id);
         }
         slotMap->erase(id);
     }
     
     void disconnectAllSlots() const { 
         std::unique_lock<std::shared_timed_mutex> lock(signalLock);
-        for (auto &q : asyncQueues){
-            q.second.stop();
+        for (auto &q : strandQueues){
+            q.second.enqueue(nullptr);
         }
-        for (auto &t : asyncQueueThreads){
+        for (auto &t : strandThreads){
             t.second.join();
         }
-        asyncQueueThreads.clear();
-        asyncQueues.clear();
+        strandThreads.clear();
+        strandQueues.clear();
         
         synchronousSlots.clear();
         asynchronousSlots.clear();
-        asynchronousEnqueueSlots.clear();
+        strandSlots.clear();
         threadPooledSlots.clear();
     }
     
@@ -163,8 +164,8 @@ private:
             runAsynchronous(slot.second, p...);
         }
         
-        for (auto const &slot : asynchronousEnqueueSlots){
-            runAsynchronousEnqueued(slot.first, slot.second, p...);
+        for (auto const &slot : strandSlots){
+            runStrands(slot.first, slot.second, p...);
         }
         
         for (auto const &slot : threadPooledSlots){
@@ -190,11 +191,11 @@ private:
         slotThread.detach();
     }
     
-    inline void runAsynchronousEnqueued(uint32_t asyncQueueId, const std::function<void(Args...)> &function, const Args &... p) const{
+    inline void runStrands(uint32_t asyncQueueId, const std::function<void(Args...)> &function, const Args &... p) const{
         //bind the function arguments to the function using a lambda and store
         //the newly bound function. This changes the function signature in the
         //resultant map, there are no longer any parameters in the bound function
-        asyncQueues[asyncQueueId].enqueue([&function, p...](){function(p...);});
+        strandQueues[asyncQueueId].enqueue([&function, p...](){function(p...);});
     }
     
     inline void runSynchronous(const std::function<void(Args...)> &function, const Args &... p) const{
@@ -215,16 +216,16 @@ private:
         return objectBind(function, *instance);
     }
     
-    std::map<uint32_t, std::function<void(Args...)>> *getSlotMap(const SignalConnectionScheme &scheme) const{
+    std::map<uint32_t, std::function<void(Args...)>> *getSlotMap(const ExecutorScheme &scheme) const{
         switch(scheme){
-            case (SignalConnectionScheme::ASYNCHRONOUS):
+            case (ExecutorScheme::ASYNCHRONOUS):
                 return &asynchronousSlots;
-            case (SignalConnectionScheme::ASYNCHRONOUS_ENQUEUE):
-                return &asynchronousEnqueueSlots;
-            case (SignalConnectionScheme::THREAD_POOLED):
+            case (ExecutorScheme::STRAND):
+                return &strandSlots;
+            case (ExecutorScheme::THREAD_POOLED):
                 return &threadPooledSlots;
             default:
-            case (SignalConnectionScheme::SYNCHRONOUS):
+            case (ExecutorScheme::SYNCHRONOUS):
                 return &synchronousSlots;
         }
     }
@@ -234,20 +235,31 @@ private:
             return &synchronousSlots;
         if (asynchronousSlots.count(id))
             return &asynchronousSlots;
-        if (asynchronousEnqueueSlots.count(id))
-            return &asynchronousEnqueueSlots;
+        if (strandSlots.count(id))
+            return &strandSlots;
         if (threadPooledSlots.count(id))
             return &threadPooledSlots;
         return nullptr;
     }
         
     void queueListener(const uint32_t &id) const{
-        auto &q = asyncQueues[id];    
-        while (!q.isStopped()){
-            auto func = q.dequeue();
-            if (q.isStopped())
-                break;
-            func();
+        auto &q = strandQueues[id];
+        std::function<void()> func = [](){};
+        std::chrono::duration<double> waitTime = std::chrono::nanoseconds(1);
+        while (func){
+            if (q.dequeue(func)){
+                if (func) func();
+                waitTime = std::chrono::nanoseconds(1);
+            }
+            else{
+                std::this_thread::sleep_for(waitTime);
+                waitTime*=2;
+            }
+            if (waitTime > BSignals::details::WheeledThreadPool::getMaxWait()){
+                q.blocking_dequeue(func);
+                if (func) func();
+                waitTime = std::chrono::nanoseconds(1);
+            }
         }
     }
     
@@ -259,20 +271,20 @@ private:
     mutable std::atomic<uint32_t> currentId {0};
     
     //Async Emit Semaphore
-    mutable BSignals::details::Semaphore sem {128};
+    mutable BSignals::details::Semaphore sem {1024};
     
     //emissionGuard determines if it is necessary to guard emission with a shared mutex
     //this is only required if connection/disconnection could be interleaved with emission
     const bool enableEmissionGuard {false};
     
     //Async Enqueue Queues and Threads
-    mutable std::map<uint32_t, BSignals::details::SafeQueue<std::function<void()>>> asyncQueues;
-    mutable std::map<uint32_t, std::thread> asyncQueueThreads;
+    mutable std::map<uint32_t, BSignals::details::mpsc_queue_t<std::function<void()>>> strandQueues;
+    mutable std::map<uint32_t, std::thread> strandThreads;
     
     //Slot Maps
     mutable std::map<uint32_t, std::function<void(Args...)>> synchronousSlots;
     mutable std::map<uint32_t, std::function<void(Args...)>> asynchronousSlots;
-    mutable std::map<uint32_t, std::function<void(Args...)>> asynchronousEnqueueSlots;
+    mutable std::map<uint32_t, std::function<void(Args...)>> strandSlots;
     mutable std::map<uint32_t, std::function<void(Args...)>> threadPooledSlots;
 
 };

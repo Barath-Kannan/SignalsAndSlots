@@ -64,7 +64,7 @@ public:
         return ret;
     }
 
-    std::pair<T, bool> wait_for_dequeue(std::chrono::duration<double> timeout){
+    std::pair<T, bool> waitForDequeue(std::chrono::duration<double> timeout){
         std::pair<T, bool> ret;
         ret.second = false;
         std::unique_lock<std::mutex> lock(m);

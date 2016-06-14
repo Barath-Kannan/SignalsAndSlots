@@ -27,21 +27,24 @@ public:
         run([task, p...](){task(p...);});
     }
     
-    static void run(const std::function<void()> &task){
+    static void run(const std::function<void()> task){
         threadPooledFunctions.getSpoke().enqueue(task);
     }
     
     //only invoke start up if a thread pooled slot has been connected
     static void startup();
     
+    static std::chrono::duration<double> getMaxWait();
 private:
     static void queueListener(uint32_t index);
     static class _init {
     public:
+        _init(); //constructor
         ~_init(); //destructor
     } _initializer;
     
     static const uint32_t nThreads{8};
+    static std::chrono::duration<double> maxWait;
     static std::mutex tpLock;
     static bool isStarted;
     static BSignals::details::Wheel<BSignals::details::mpsc_queue_t<std::function<void()>>, BSignals::details::WheeledThreadPool::nThreads> threadPooledFunctions;
