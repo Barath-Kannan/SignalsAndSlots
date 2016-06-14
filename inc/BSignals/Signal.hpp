@@ -255,7 +255,7 @@ private:
                 waitTime*=2;
             }
             if (waitTime > maxWait){
-                q.blocking_dequeue(func);
+                q.blockingDequeue(func);
                 if (func) func();
                 waitTime = std::chrono::nanoseconds(1);
             }
@@ -277,7 +277,7 @@ private:
     const bool enableEmissionGuard {false};
     
     //Strand Queues and Threads
-    mutable std::map<uint32_t, BSignals::details::mpsc_queue_t<std::function<void()>>> strandQueues;
+    mutable std::map<uint32_t, BSignals::details::MPSCQueue<std::function<void()>>> strandQueues;
     mutable std::map<uint32_t, std::thread> strandThreads;
     
     //Slot Maps

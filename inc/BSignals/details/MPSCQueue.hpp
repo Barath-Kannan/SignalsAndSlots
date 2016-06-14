@@ -48,18 +48,17 @@
 namespace BSignals{ namespace details{
 
 template<typename T>
-class mpsc_queue_t
-{
+class MPSCQueue{
 public:
 
-    mpsc_queue_t() :
+    MPSCQueue() :
         _head(new buffer_node_t),
         _tail(_head.load(std::memory_order_relaxed)){
         buffer_node_t* front = _head.load(std::memory_order_relaxed);
         front->next.store(nullptr, std::memory_order_relaxed);
     }
 
-    ~mpsc_queue_t(){
+    ~MPSCQueue(){
         T output;
         while (this->dequeue(output)) {}
         buffer_node_t* front = _head.load(std::memory_order_relaxed);
@@ -92,7 +91,7 @@ public:
         return true;
     }
     
-    void blocking_dequeue(T& output){
+    void blockingDequeue(T& output){
         std::shared_lock<std::shared_timed_mutex> lock(_mutex);
         while (!dequeue(output)){
             _cv.wait(_mutex);
@@ -101,8 +100,7 @@ public:
     
 private:
 
-    struct buffer_node_t
-    {
+    struct buffer_node_t{
         T                           data;
         std::atomic<buffer_node_t*> next;
     };
@@ -112,8 +110,8 @@ private:
     std::shared_timed_mutex _mutex;
     std::condition_variable_any _cv;
     
-    mpsc_queue_t(const mpsc_queue_t&) {}
-    void operator=(const mpsc_queue_t&) {}
+    MPSCQueue(const MPSCQueue&) {}
+    void operator=(const MPSCQueue&) {}
 };
 }}
 

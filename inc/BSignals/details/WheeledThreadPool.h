@@ -45,7 +45,7 @@ private:
     static std::chrono::duration<double> maxWait;
     static std::mutex tpLock;
     static bool isStarted;
-    static BSignals::details::Wheel<BSignals::details::mpsc_queue_t<std::function<void()>>, BSignals::details::WheeledThreadPool::nThreads> threadPooledFunctions;
+    static BSignals::details::Wheel<BSignals::details::MPSCQueue<std::function<void()>>, BSignals::details::WheeledThreadPool::nThreads> threadPooledFunctions;
     static std::vector<std::thread> queueMonitors;
 };
 }}

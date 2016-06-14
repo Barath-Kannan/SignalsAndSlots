@@ -294,18 +294,20 @@ TEST_P(SignalTestParametrized, IntenseUsage) {
     typedef uint32_t sigType;
     auto func = ([&params, &completedFunctions](sigType x) {
         for (uint32_t i = 0; i < params.nOperations; i++) {
+            //this is going to have an unused warning, ignore it
+            //the variable is marked volatile to ensure it is not optimized out
             volatile sigType v = x;
         }
         completedFunctions++;
     });
 
-//    bt.start();
-//    for (uint32_t i = 0; i < 10000; i++) {
-//        func(sigType{i});
-//    }
-//    bt.stop();
-//    completedFunctions -= 10000;
-//    cout << "Function runtime overhead: " << bt.getElapsedNanoseconds() / 10000 << "ns" << endl;
+    bt.start();
+    for (uint32_t i = 0; i < 10; i++) {
+        func(sigType{i});
+    }
+    bt.stop();
+    completedFunctions -= 10;
+    cout << "Function runtime overhead: " << bt.getElapsedNanoseconds() / 10 << "ns" << endl;
 
     Signal<sigType> signal;
     cout << "Connecting " << params.nConnections << " functions" << endl;

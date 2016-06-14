@@ -10,7 +10,7 @@ using std::lock_guard;
 using std::atomic;
 using std::vector;
 using BSignals::details::Wheel;
-using BSignals::details::mpsc_queue_t;
+using BSignals::details::MPSCQueue;
 using BSignals::details::SafeQueue;
 using BSignals::details::WheeledThreadPool;
 using BSignals::details::BasicTimer;
@@ -18,7 +18,7 @@ using BSignals::details::BasicTimer;
 std::mutex WheeledThreadPool::tpLock;
 bool WheeledThreadPool::isStarted = false;
 std::chrono::duration<double> WheeledThreadPool::maxWait;
-Wheel<mpsc_queue_t<std::function<void()>>, BSignals::details::WheeledThreadPool::nThreads> WheeledThreadPool::threadPooledFunctions {};
+Wheel<MPSCQueue<std::function<void()>>, BSignals::details::WheeledThreadPool::nThreads> WheeledThreadPool::threadPooledFunctions {};
 std::vector<std::thread> WheeledThreadPool::queueMonitors;
 
 WheeledThreadPool::_init WheeledThreadPool::_initializer;
@@ -27,11 +27,11 @@ WheeledThreadPool::_init::_init(){
     //make a conservative estimate of when blocking will
     //be faster than spinning
     BasicTimer bt;
-    mpsc_queue_t<int> tq;
+    MPSCQueue<int> tq;
     tq.enqueue(0);
     int x;
     bt.start();
-    tq.blocking_dequeue(x);
+    tq.blockingDequeue(x);
     bt.stop();
     maxWait = bt.getElapsedDuration()*2;
 }
@@ -79,7 +79,7 @@ void WheeledThreadPool::queueListener(uint32_t index) {
             waitTime*=2;
         }
         if (waitTime > maxWait){
-            spoke.blocking_dequeue(func);
+            spoke.blockingDequeue(func);
             if (func) func();
             waitTime = std::chrono::nanoseconds(1);
         }
