@@ -27,9 +27,7 @@ public:
         run([task, p...](){task(p...);});
     }
     
-    static void run(const std::function<void()> task){
-        threadPooledFunctions.getSpoke().enqueue(task);
-    }
+    static void run(const std::function<void()> task);
     
     //only invoke start up if a thread pooled slot has been connected
     static void startup();

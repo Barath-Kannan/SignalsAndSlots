@@ -109,7 +109,7 @@ TEST_F(SignalTest, AsychronousSignal) {
 
 }
 
-TEST_F(SignalTest, AsychronousEnqueueSignal) {
+TEST_F(SignalTest, StrandSignal) {
     cout << "Instantiating signal object" << endl;
 
     Signal<int, int> testSignal;
@@ -275,7 +275,7 @@ TEST_P(SignalTestParametrized, IntenseUsage) {
             cout << "Asynchronous";
             break;
         case(ExecutorScheme::STRAND):
-            cout << "Asynchronous Enqueue";
+            cout << "Strand";
             break;
         case(ExecutorScheme::SYNCHRONOUS):
             cout << "Synchronous";
@@ -350,9 +350,11 @@ TEST_P(SignalTestParametrized, IntenseUsage) {
     cout << "Processing completed" << endl;
     cout << "Emission rate: " << (double) counter / bt.getElapsedMilliseconds() << fixed << "m/ms" << endl;
     cout << "Time to emit: " << bt.getElapsedMilliseconds() << "ms" << endl;
-    cout << "Average emit time: " << (double) bt.getElapsedNanoseconds() / params.nEmissions << "ns" << endl;
+    cout << "Average emit time (overall): " << (double) bt.getElapsedNanoseconds() / (params.nEmissions) << "ns" << endl;
+    cout << "Average emit time (per connection): " << (double) bt.getElapsedNanoseconds() / (params.nEmissions*params.nConnections) << "ns" << endl;
     cout << "Time to emit+process: " << bt2.getElapsedMilliseconds() << "ms" << endl;
-    cout << "Average emit+process time: " << (double) bt2.getElapsedNanoseconds() / params.nEmissions << "ns" << endl;
+    cout << "Average emit+process time (overall): " << (double) bt2.getElapsedNanoseconds() / params.nEmissions << "ns" << endl;
+    cout << "Average emit+process time (per connection): " << (double) bt2.getElapsedNanoseconds() / (params.nEmissions*params.nConnections) << "ns" << endl;
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -378,7 +380,7 @@ INSTANTIATE_TEST_CASE_P(
         );
 
 INSTANTIATE_TEST_CASE_P(
-        SignalTest_Benchmark_AsynchronousEnqueue,
+        SignalTest_Benchmark_Strand,
         SignalTestParametrized,
         testing::Combine(
         Values(1, 10, 50), //number of connections

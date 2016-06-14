@@ -47,6 +47,10 @@ WheeledThreadPool::_init::~_init() {
     }
 }
 
+void WheeledThreadPool::run(const std::function<void()> task) {
+    threadPooledFunctions.getSpoke().enqueue(task);
+}
+
 void WheeledThreadPool::startup() {
     std::lock_guard<mutex> lock(tpLock);
     if (!isStarted){

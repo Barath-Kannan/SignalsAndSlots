@@ -26,7 +26,7 @@
 //These executors determine how message emission to a slot occurs
     // SYNCHRONOUS:
     // Emission occurs synchronously.
-    // When emit returns, all connected signals have returned.
+    // When emit returns, all connected slots have been invoked and returned.
     // This method is preferred when connected functions have short execution
     // time, quick emission is required, and/or when it is necessary to know 
     // that the function has returned before proceeding.
@@ -56,9 +56,8 @@
     // emissions. The number of threads in the pool is not currently run-time
     // configurable but may be in the future.
     // Emitted parameters are bound to the mapped function and enqueued on the 
-    // one of the waiting threads - acquisition of a queue is wait-free and
-    // lock free. These messages are then processed when the relevant queue
-    // is consumed by the mapped thread pool.
+    // one of the waiting threads. These messages are then processed when the 
+    // relevant queue is consumed by the mapped thread pool.
     // This method is recommended when connected functions have longer execution
     // time, the overhead of creating/destroying a thread for each slot would be
     // unperformant, the overhead of a waiting thread for each slot is 
@@ -244,6 +243,7 @@ private:
     void queueListener(const uint32_t &id) const{
         auto &q = strandQueues[id];
         std::function<void()> func = [](){};
+        auto maxWait = BSignals::details::WheeledThreadPool::getMaxWait();
         std::chrono::duration<double> waitTime = std::chrono::nanoseconds(1);
         while (func){
             if (q.dequeue(func)){
@@ -254,7 +254,7 @@ private:
                 std::this_thread::sleep_for(waitTime);
                 waitTime*=2;
             }
-            if (waitTime > BSignals::details::WheeledThreadPool::getMaxWait()){
+            if (waitTime > maxWait){
                 q.blocking_dequeue(func);
                 if (func) func();
                 waitTime = std::chrono::nanoseconds(1);
@@ -262,21 +262,21 @@ private:
         }
     }
     
-    //shared mutex for thread safety
-    //emit acquires shared lock, connect/disconnect acquires unique lock
+    //Shared mutex for thread safety
+    //Emit acquires shared lock, connect/disconnect acquires unique lock
     mutable std::shared_timed_mutex signalLock;
     
-    //atomically incremented slotId
+    //Atomically incremented slotId
     mutable std::atomic<uint32_t> currentId {0};
     
     //Async Emit Semaphore
     mutable BSignals::details::Semaphore sem {1024};
     
-    //emissionGuard determines if it is necessary to guard emission with a shared mutex
-    //this is only required if connection/disconnection could be interleaved with emission
+    //EmissionGuard determines if it is necessary to guard emission with a shared mutex
+    //This is only required if connection/disconnection could be interleaved with emission
     const bool enableEmissionGuard {false};
     
-    //Async Enqueue Queues and Threads
+    //Strand Queues and Threads
     mutable std::map<uint32_t, BSignals::details::mpsc_queue_t<std::function<void()>>> strandQueues;
     mutable std::map<uint32_t, std::thread> strandThreads;
     
