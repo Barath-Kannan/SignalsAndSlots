@@ -11,20 +11,20 @@ executors for additional flexibility.
     - [Table of Contents](#table of contents)
     - [Features](#features)
     - [Building and Linking](#building and linking)
-    - [Usage]
-        - [Simple Usage Example]
-        - [Include]
-        - [Construct]
-        - [Connect]
-        - [Emit]
-        - [Disconnect]
-    - [Executors]
-        - [Synchronous]
-        - [Asynchronous]
-        - [Strand]
-        - [Thread Pooled]
-    - [To Do]
-    - [Limitations]
+    - [Usage](#usage)
+        - [Simple Usage Example](#simple usage example)
+        - [Include](#include)
+        - [Construct](#construct)
+        - [Connect](#connect)
+        - [Emit](#emit)
+        - [Disconnect](#disconnect)
+    - [Executors](#executors)
+        - [Synchronous](#synchronous)
+        - [Asynchronous](#asynchronous)
+        - [Strand](#strand)
+        - [Thread Pooled](#thread pooled)
+    - [To Do](#to do)
+    - [Limitations](#limitations)
 
 ##Features
 - Simple signals and slots mechanism
