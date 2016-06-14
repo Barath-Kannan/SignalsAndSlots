@@ -188,7 +188,7 @@ different executor modes.
     - they have long execution time
     - emissions occur in blocks
     - the additional time overhead of creating/destroying a thread for each slot would not be performant
-    - connected functions need to be processed in order of arrival (FIFO)
+    - emissions need to be processed in order of arrival (FIFO)
 
 ####Thread Pooled
 - Emission occurs asynchronously. 
