@@ -2,11 +2,7 @@
 
 This is a signals and slots library for C++14. 
 
-The intention is to provide a fast thread safe signals/slots mechanism which is 
-easy to use and has no external dependencies.
-
-The main differentiating factor between this signals/slots library and others
-is that it provides the means to specify the type of executor used.
+The intention is to provide a fast thread safe signals/slots mechanism which is easy to use and has no external dependencies. The main differentiating factor between this signals/slots library and others is that it provides the means to specify the type of executor used.
 
 ##Table of Contents
 - [BSignals](#bsignals)
@@ -164,19 +160,19 @@ different executor modes.
 - Emission occurs synchronously.
 - When emit returns, all connected slots have been invoked and returned.
 - Preferred for slots when
-        - they have short execution time
-        - quick emission is required
-        - Necessary to know that the function has returned before proceeding
+    - they have short execution time
+    - quick emission is required
+    - Necessary to know that the function has returned before proceeding
 
 ####Asynchronous
 - Emission occurs asynchronously.
 - A detached thread is spawned on emission.
 - The thread is destroyed when the connected slot returns.
 - Preferred for slots when 
-        - they have long execution time
-        - they are independent
-        - additional thread overhead is not an issue
-        - separate thread required for lifetime of invocation
+    - they have long execution time
+    - they are independent
+    - additional thread overhead is not an issue
+    - separate thread required for lifetime of invocation
 
 ####Strand
 - Emission occurs asynchronously.
@@ -184,10 +180,10 @@ different executor modes.
 - Emitted parameters are enqueued on the waiting thread to be processed synchronously
 - The underlying queue is a (mostly) lock free multi-producer single consumer queue
 - Preferred for slots when
-        - they have long execution time
-        - emissions occur in blocks
-        - the additional time overhead of creating/destroying a thread for each slot would not be performant
-        - connected functions need to be processed in order of arrival (FIFO)
+    - they have long execution time
+    - emissions occur in blocks
+    - the additional time overhead of creating/destroying a thread for each slot would not be performant
+    - connected functions need to be processed in order of arrival (FIFO)
 
 ####Thread Pooled
 - Emission occurs asynchronously. 
@@ -200,10 +196,10 @@ waiting thread queues
 - The underlying structure is an array of multi-producer single consumer queues,
 with tasks allocated to each queue using round robin scheduling
 - Preferred for slots when
-        - they have long execution time
-        - the overhead of creating/destroying a thread for each slot would not be performant
-        - the overhead of a waiting thread for each slot (as in the strand executor scheme) is unnecessary
-        - connected functions do NOT need to be processed in order of arrival
+    - they have long execution time
+    - the overhead of creating/destroying a thread for each slot would not be performant
+    - the overhead of a waiting thread for each slot (as in the strand executor scheme) is unnecessary
+    - connected functions do NOT need to be processed in order of arrival
 
 ##To Do
 - Dynamically scaling thread pool (based on business)
