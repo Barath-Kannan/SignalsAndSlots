@@ -12,19 +12,30 @@ additional flexibility.
 - Thread safety only required for interleaved emission/connection/disconnection
 
 ##Building and Linking
-To build the default release build, type 
+To build the default release build, type
+    
     make
+    
 in the base directory.
 To build the debug build, type
+    
     make debug
+    
 in the base directory.
 Currently only makefile based build is supported - other build systems may be added
 in the future. 
-For dynamic linking, a shared object is generated in {BASE_DIRECTORY}/gen/release/lib/dynamic
-For static linking, an archive is generated in {BASE_DIRECTORY}/gen/release/lib/static
-
-Google unit tests binary is generated in gen/release/test.
-
+For dynamic linking, a shared object is generated in
+    
+    {BASE_DIRECTORY}/gen/release/lib/dynamic
+    
+For static linking, an archive is generated in
+    
+    {BASE_DIRECTORY}/gen/release/lib/static
+    
+Google unit tests binary is generated in
+    
+    {BASE_DIRECTORY}/gen/release/test
+    
 ##Usage
 
 ####Simple Usage Example
@@ -49,20 +60,23 @@ Google unit tests binary is generated in gen/release/test.
     //Default constructor
     BSignals::Signal<T1,T2,T...,TN> signalA; // T1..TN are the types required by emission
 
-    //Thread safe specifier - Full thread safety is disabled by default for performance.
-    //Interleaved emissions are always thread safe and interleaved connects/disconnects
-    //always are thread safe.
-    //Interleaved connect/disconnect with emissions are not thread safe which is what
-    //this flag is used for.
+Full thread safety is disabled by default for performance reasons. 
+Interleaved emissions are always thread safe.
+Interleaved connects/disconnects always are thread safe.
+Interleaved connect/disconnect with emissions are not thread safe - if you cannot
+make guarantees that the 2 will not be interleaved, enable thread safety using the constructor:
+    
     BSignals::Signal<T1,T2,T...,TN> signalB(true);
     
-    //Specify maximum number of asynchronous threads that can be spawned by this signal
-    //Default is 1024
-    BSignals::Signal<T1,T2,T...,TN> signalC(512);
+To specify the maximum number of asynchronous threads a signal can spawn, call
+ the constructor with an unsigned integer, as below.
+    BSignals::Signal<T1,T2,T...,TN> signalC(512); //Default is 1024
 
-    //Above 2 optional parameters
+To specify both thread safety and the number of asynchronous threads, call the 
+constructor with a boolean and unsigned integer, as below.
+    
     BSignals::Signal<T1,T2,T...,TN> signalD(true, 512);
-
+    
 ####Connect
 Connected functions must have a return type of void and a signature matching that
 of the signal object.
