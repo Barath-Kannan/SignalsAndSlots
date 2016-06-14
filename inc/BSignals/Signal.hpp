@@ -59,6 +59,8 @@ public:
     
 private:
     BSignals::details::SignalImpl<Args...> signalImpl;
+    Signal<Args...>(const Signal<Args...>& that) = delete;
+    void operator=(const Signal<Args...>&) = delete;
 };
 }
 #endif /* SIGNAL_HPP */

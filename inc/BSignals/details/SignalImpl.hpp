@@ -153,7 +153,7 @@ public:
     
 private:
     SignalImpl<Args...>(const SignalImpl<Args...>& that) = delete;
-    //SignalImpl<Args...>::operator=(const SignalImpl<Args...>& that) = delete;
+    void operator=(const SignalImpl<Args...>&) = delete;
     
     inline void emitSignalUnsafe(const Args &... p) const {
         for (auto const &slot : synchronousSlots){
