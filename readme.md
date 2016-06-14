@@ -6,6 +6,26 @@ The intention is to provide a fast thread safe signals/slots mechanism which is
 easy to use, has no external dependencies, and allows specification of different
 executors for additional flexibility.
 
+##Table of Contents
+- [BSignals](#)
+    - [Table of Contents](#)
+    - [Features](#)
+    - [Building and Linking](#)
+    - [Usage](#)
+                    - [Simple Usage Example](#)
+                    - [Include](#)
+                    - [Construct](#)
+                    - [Connect](#)
+                    - [Emit](#)
+                    - [Disconnect](#)
+    - [Executors](#)
+                    - [Synchronous](#)
+                    - [Asynchronous](#)
+                    - [Strand](#)
+                    - [Thread Pooled](#)
+    - [To Do](#)
+    - [Limitations](#)
+
 ##Features
 - Simple signals and slots mechanism
 - Specifiable executor (synchronous, asynchronous, strand, thread pooled)
