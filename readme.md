@@ -3,8 +3,10 @@
 This is a signals and slots library for C++14. 
 
 The intention is to provide a fast thread safe signals/slots mechanism which is 
-easy to use, has no external dependencies, and allows specification of different
-executors for additional flexibility.
+easy to use and has no external dependencies.
+
+The main differentiating factor between this signals/slots library and others
+is that it provides the means to specify the type of executor used.
 
 ##Table of Contents
 - [BSignals](#bsignals)
@@ -34,29 +36,29 @@ executors for additional flexibility.
 
 ##Building and Linking
 To build the default release build, type
-    
+```
     make
-    
+```
 in the base directory.
 To build the debug build, type
-    
+```    
     make debug
-    
+``` 
 in the base directory.
 Currently only makefile based build is supported - other build systems may be added
 in the future. 
 For dynamic linking, a shared object is generated in
-    
+```
     {BASE_DIRECTORY}/gen/release/lib/dynamic
-    
+``` 
 For static linking, an archive is generated in
-    
+``` 
     {BASE_DIRECTORY}/gen/release/lib/static
-    
+``` 
 The gtest binary is generated in
-    
+``` 
     {BASE_DIRECTORY}/gen/release/test
-    
+``` 
 ##Usage
 
 Below is a summary of how to use the Signal class.
@@ -161,26 +163,31 @@ different executor modes.
 ####Synchronous
 - Emission occurs synchronously.
 - When emit returns, all connected slots have been invoked and returned.
-- Preferred for slots with short execution time, where quick emission is
-required and/or when it is necessary to know that the function has returned
-before proceeding.
+- Preferred for slots when
+        - they have short execution time
+        - quick emission is required
+        - Necessary to know that the function has returned before proceeding
 
 ####Asynchronous
 - Emission occurs asynchronously.
 - A detached thread is spawned on emission.
 - The thread is destroyed when the connected slot returns.
-- This method is recommended when connected functions have long execution time
-and are independent, and/or a dedicated thread is required on emission
+- Preferred for slots when 
+        - they have long execution time
+        - they are independent
+        - additional thread overhead is not an issue
+        - separate thread required for lifetime of invocation
 
 ####Strand
 - Emission occurs asynchronously.
 - A dedicated thread is spawned on slot connection to wait for new messages
 - Emitted parameters are enqueued on the waiting thread to be processed synchronously
 - The underlying queue is a (mostly) lock free multi-producer single consumer queue
-- This method is recommended when connected functions have longer execution
-time, emissions occur in blocks, the overhead of creating/destroying a thread
-for each slot would not be performant, and/or connected functions need to be
-processed in order of arrival (FIFO).
+- Preferred for slots when
+        - they have long execution time
+        - emissions occur in blocks
+        - the additional time overhead of creating/destroying a thread for each slot would not be performant
+        - connected functions need to be processed in order of arrival (FIFO)
 
 ####Thread Pooled
 - Emission occurs asynchronously. 
@@ -192,11 +199,11 @@ be in the future
 waiting thread queues
 - The underlying structure is an array of multi-producer single consumer queues,
 with tasks allocated to each queue using round robin scheduling
-- This method is recommended when connected functions have longer execution time,
-the overhead of creating/destroying a thread for each slot would not be performant,
-the overhead of a waiting thread for each slot (as in the strand executor scheme)
-is unnecessary, and/or connected functions do NOT need to be processed in order
-of arrival.  
+- Preferred for slots when
+        - they have long execution time
+        - the overhead of creating/destroying a thread for each slot would not be performant
+        - the overhead of a waiting thread for each slot (as in the strand executor scheme) is unnecessary
+        - connected functions do NOT need to be processed in order of arrival
 
 ##To Do
 - Dynamically scaling thread pool (based on business)
