@@ -61,14 +61,13 @@ Google unit tests binary is generated in
     //Default constructor
     BSignals::Signal<T1,T2,T...,TN> signalA; // T1..TN are the types required by emission
 
-Full thread safety is disabled by default for performance reasons. 
+- Full thread safety is disabled by default for performance reasons
+- Interleaved emissions are always thread safe
+- Interleaved connects/disconnects always are thread safe
+- Interleaved connect/disconnect with emissions are not thread safe
 
-Interleaved emissions are always thread safe.
-
-Interleaved connects/disconnects always are thread safe.
-
-Interleaved connect/disconnect with emissions are not thread safe - if you cannot
-make guarantees that the 2 will not be interleaved, enable thread safety using the constructor:
+If you cannot make guarantees that the emission and connection/disconnection will
+not be interleaved, enable thread safety using the constructor:
     
     BSignals::Signal<T1,T2,T...,TN> signalB(true);
     
