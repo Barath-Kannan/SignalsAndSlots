@@ -1,4 +1,3 @@
-
 /* 
  * File:   BasicTimer.h
  * Author: Barath Kannan

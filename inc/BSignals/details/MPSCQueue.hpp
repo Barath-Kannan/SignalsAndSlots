@@ -72,9 +72,11 @@ public:
 
         buffer_node_t* prev_head = _head.exchange(node, std::memory_order_acq_rel);
         prev_head->next.store(node, std::memory_order_release);
-        
-        std::shared_lock<std::shared_timed_mutex> lock(_mutex);
-        _cv.notify_one();
+
+        std::shared_lock<std::shared_timed_mutex> lock(_mutex);        
+        if (waitingReader){
+            _cv.notify_one();   
+        }
     }
 
     bool dequeue(T& output){
@@ -93,9 +95,11 @@ public:
     
     void blockingDequeue(T& output){
         std::shared_lock<std::shared_timed_mutex> lock(_mutex);
+        waitingReader = true;
         while (!dequeue(output)){
             _cv.wait(_mutex);
         }
+        waitingReader = false;
     }
     
 private:
@@ -109,6 +113,7 @@ private:
     std::atomic<buffer_node_t*> _tail;
     std::shared_timed_mutex _mutex;
     std::condition_variable_any _cv;
+    bool waitingReader{false};
     
     MPSCQueue(const MPSCQueue&) {}
     void operator=(const MPSCQueue&) {}

@@ -1,4 +1,3 @@
-
 /* 
  * File:   Semaphore.h
  * Author: Barath Kannan
