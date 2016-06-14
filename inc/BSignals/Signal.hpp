@@ -19,7 +19,6 @@
 #include <utility>
 #include <type_traits>
 
-#include "BSignals/details/SafeQueue.hpp"
 #include "BSignals/details/MPSCQueue.hpp"
 #include "BSignals/details/WheeledThreadPool.h"
 #include "BSignals/details/Semaphore.h"
