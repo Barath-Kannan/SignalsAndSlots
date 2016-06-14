@@ -1,9 +1,10 @@
 # BSignals
 
-This is a signals and slots library for C++14. The intention is to provide a
-fast thread safe signals/slots mechanism which is easy to use, has 
-no external dependencies, and allows specification of different executors for 
-additional flexibility.
+This is a signals and slots library for C++14. 
+
+The intention is to provide a fast thread safe signals/slots mechanism which is 
+easy to use, has no external dependencies, and allows specification of different
+executors for additional flexibility.
 
 ##Features
 - Simple signals and slots mechanism
@@ -61,8 +62,11 @@ Google unit tests binary is generated in
     BSignals::Signal<T1,T2,T...,TN> signalA; // T1..TN are the types required by emission
 
 Full thread safety is disabled by default for performance reasons. 
+
 Interleaved emissions are always thread safe.
+
 Interleaved connects/disconnects always are thread safe.
+
 Interleaved connect/disconnect with emissions are not thread safe - if you cannot
 make guarantees that the 2 will not be interleaved, enable thread safety using the constructor:
     
@@ -70,6 +74,7 @@ make guarantees that the 2 will not be interleaved, enable thread safety using t
     
 To specify the maximum number of asynchronous threads a signal can spawn, call
  the constructor with an unsigned integer, as below.
+    
     BSignals::Signal<T1,T2,T...,TN> signalC(512); //Default is 1024
 
 To specify both thread safety and the number of asynchronous threads, call the 
@@ -79,39 +84,49 @@ constructor with a boolean and unsigned integer, as below.
     
 ####Connect
 Connected functions must have a return type of void and a signature matching that
-of the signal object.
-e.g. Given a Signal object
+of the signal object. Given a Signal object:
+    
     BSignals::Signal<int, int> signalInt;
-Connected slots must must have the signature
+    
+Connected slots must must have the signature:
+    
     void functionName(int a, int b);
+    
 
 To connect a function, an executor is specified as the first argument, and the
-function name as the second
+function name as the second.
+    
     //id can be used later for disconnection
     int id = signal.connectSlot(BSignals::ExecutorScheme::SYNCHRONOUS, functionName);
-
-    //Alternative executor schemes (see Executor section below for more details)
+    
+Alternative executor schemes can also be specified (see Executor section below 
+for more details).
+    
     //signal.connectSlot(BSignals::ExecutorScheme::ASYNCHRONOUS, functionName);
     //signal.connectSlot(BSignals::ExecutorScheme::STRAND, functionName);
     //signal.connectSlot(BSignals::ExecutorScheme::THREAD_POOLED, functionName);
-
+    
 To connect a member function, an executor is specified as the first argument, 
 the member function name as the second, and the instance reference/pointer as the third.
+    
     Foo foo;
     int id = signal.connectMemberSlot(BSignals::ExecutorScheme::SYNCHRONOUS, &Foo::bar, foo);
-
+    
 ####Emit
-To emit on a given signal, call emitSignal with the emission parameters
+To emit on a given signal, call emitSignal with the emission parameters.
+    
     signal.emitSignal(arg1, arg2);
-
+    
 ####Disconnect
-To disconnect a slot, call disconnectSlot with the id acquired on connection
+To disconnect a slot, call disconnectSlot with the id acquired on connection.
+    
     //disconnection/connection should not be interleaved with emission unless the
     //signal was initialized with thread safety enabled
     int id = signal.connectSlot(...);
     signal.disconnectSlot(id);
     
 It is also possible to disconnect all connected slots
+    
     signal.disconnectAllSlots();
 
 ##Executors
