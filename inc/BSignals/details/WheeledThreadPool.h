@@ -37,11 +37,11 @@ private:
     static void queueListener(uint32_t index);
     static class _init {
     public:
-        _init(); //constructor
-        ~_init(); //destructor
+        _init(); 
+        ~_init(); 
     } _initializer;
     
-    static const uint32_t nThreads{8};
+    static const uint32_t nThreads{32};
     static std::chrono::duration<double> maxWait;
     static std::mutex tpLock;
     static bool isStarted;

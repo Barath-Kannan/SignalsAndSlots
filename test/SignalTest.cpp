@@ -390,12 +390,12 @@ TEST_P(SignalTestParametrized, LengthyUsage) {
     });
 
     bt.start();
-    for (uint32_t i = 0; i < 10; i++) {
+    for (uint32_t i = 0; i < 100; i++) {
         func(sigType{i});
     }
     bt.stop();
-    completedFunctions -= 10;
-    cout << "Function runtime overhead: " << bt.getElapsedNanoseconds() / 10 << "ns" << endl;
+    completedFunctions -= 100;
+    cout << "Function runtime overhead: " << bt.getElapsedNanoseconds() / 100 << "ns" << endl;
 
     Signal<sigType> signal;
     cout << "Connecting " << params.nConnections << " functions" << endl;

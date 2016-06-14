@@ -62,6 +62,8 @@ private:
     Signal<Args...>(const Signal<Args...>& that) = delete;
     void operator=(const Signal<Args...>&) = delete;
 };
-}
+
+} /* namespace BSignals */
+
 #endif /* SIGNAL_HPP */
 
