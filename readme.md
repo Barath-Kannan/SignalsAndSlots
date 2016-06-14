@@ -133,8 +133,12 @@ To connect a member function, an executor is specified as the first argument,
 the member function name as the second, and the instance reference/pointer as the third.
 ```
     Foo foo;
-    int id = signal.connectMemberSlot(BSignals::ExecutorScheme::SYNCHRONOUS, &Foo::bar, &foo); //connect by pointer
-    int id = signal.connectMemberSlot(BSignals::ExecutorScheme::SYNCHRONOUS, &Foo::bar, foo); //connect by reference
+    
+    //connect by pointer
+    int id1 = signal.connectMemberSlot(BSignals::ExecutorScheme::SYNCHRONOUS, &Foo::bar, &foo);
+
+    //connect by reference
+    int id2 = signal.connectMemberSlot(BSignals::ExecutorScheme::SYNCHRONOUS, &Foo::bar, foo);
 ```
 ####Emit
 To emit on a given signal, call emitSignal with the emission parameters.
