@@ -8,11 +8,11 @@ executors for additional flexibility.
 
 ##Table of Contents
 - [BSignals](#bsignals)
-    - [Table of Contents](#table of contents)
+    - [Table of Contents](#table-of-contents)
     - [Features](#features)
-    - [Building and Linking](#building and linking)
+    - [Building and Linking](#building-and-linking)
     - [Usage](#usage)
-        - [Simple Usage Example](#simple usage example)
+        - [Simple Usage Example](#simple-usage-example)
         - [Include](#include)
         - [Construct](#construct)
         - [Connect](#connect)
@@ -22,8 +22,8 @@ executors for additional flexibility.
         - [Synchronous](#synchronous)
         - [Asynchronous](#asynchronous)
         - [Strand](#strand)
-        - [Thread Pooled](#thread pooled)
-    - [To Do](#to do)
+        - [Thread Pooled](#thread-pooled)
+    - [To Do](#to-do)
     - [Limitations](#limitations)
 
 ##Features
