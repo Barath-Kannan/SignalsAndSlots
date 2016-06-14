@@ -1,9 +1,6 @@
 #include "BSignals/details/WheeledThreadPool.h"
 #include "BSignals/details/BasicTimer.h"
 #include <algorithm>
-#include <iostream>
-using std::cout;
-using std::endl;
 
 using std::mutex;
 using std::lock_guard;

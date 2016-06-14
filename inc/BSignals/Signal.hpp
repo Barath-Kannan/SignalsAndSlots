@@ -23,10 +23,6 @@
 #include "BSignals/details/WheeledThreadPool.h"
 #include "BSignals/details/Semaphore.h"
 
-#include <iostream>
-using std::cout;
-using std::endl;
-
 //These executors determine how message emission to a slot occurs
     // SYNCHRONOUS:
     // Emission occurs synchronously.
