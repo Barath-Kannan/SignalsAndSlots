@@ -19,11 +19,14 @@ public:
     ~Semaphore();
     
     void acquire();
+    void acquireAll();
     void release();
+    
 private:
     std::mutex semMutex;
     std::condition_variable semCV;
     uint32_t semCounter;
+    const uint32_t initial;
 };
 }}
 #endif /* SEMAPHORE_H */

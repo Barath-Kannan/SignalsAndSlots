@@ -70,7 +70,7 @@ TEST_F(SignalTest, SynchronousSignal) {
     testSignal.disconnectSlot(0);
 }
 
-TEST_F(SignalTest, AsychronousSignal) {
+TEST_F(SignalTest, AsynchronousSignal) {
     cout << "Instantiating signal object" << endl;
 
     Signal<int, int> testSignal;
@@ -106,7 +106,6 @@ TEST_F(SignalTest, AsychronousSignal) {
     ASSERT_EQ(0, id);
 
     testSignal.disconnectSlot(0);
-
 }
 
 TEST_F(SignalTest, StrandSignal) {
@@ -170,6 +169,7 @@ TEST_F(SignalTest, MultipleConnectionTypes) {
     }
     bt2.stop();
 
+    cout << "Dequeueing" << endl;
     for (int i = 0; i < 30; i++) {
         sq.dequeue();
     }

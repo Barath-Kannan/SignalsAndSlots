@@ -18,6 +18,9 @@
 #include <thread>
 #include <utility>
 #include <type_traits>
+#include <iostream>
+using std::cout;
+using std::endl;
 
 #include "BSignals/details/MPSCQueue.hpp"
 #include "BSignals/details/WheeledThreadPool.h"
@@ -89,6 +92,7 @@ public:
     
     ~SignalImpl(){
         disconnectAllSlots();
+        sem.acquireAll();
     }
 
     template<typename F, typename C>
@@ -176,20 +180,30 @@ private:
         for (auto const &kvpair : slots){
             switch(kvpair.second.scheme){
                 case(ExecutorScheme::SYNCHRONOUS):
-                    return runSynchronous(kvpair.second.slot, p...);
+                    runSynchronous(kvpair.second.slot, p...);
+                    break;
                 case(ExecutorScheme::ASYNCHRONOUS):
-                    return runAsynchronous(kvpair.second.slot, p...);
+                    runAsynchronous(kvpair.first, kvpair.second.slot, p...);
+                    break;
                 case(ExecutorScheme::STRAND):
-                    return runStrands(kvpair.first, kvpair.second.slot, p...);
+                    runStrands(kvpair.first, kvpair.second.slot, p...);
+                    break;
                 case(ExecutorScheme::THREAD_POOLED):
-                    return runThreadPooled(kvpair.second.slot, p...);
+                    runThreadPooled(kvpair.first, kvpair.second.slot, p...);
+                    break;
             }
         }
     }
     
     inline bool getIsStillConnected(int const &id) const{
         std::shared_lock<std::shared_timed_mutex> lock(backBufferLock);
-        return (disconnectBuffer.count(id) == 0);
+        return (!disconnectBuffer.count(id));
+    }
+    
+    inline bool getIsStillConnectedFromExecutor(int const &id) const{
+        std::shared_lock<std::shared_timed_mutex> lock(backBufferLock);
+        std::shared_lock<std::shared_timed_mutex> lockSignal(signalLock);
+        return (!disconnectBuffer.count(id) && slots.count(id));
     }
     
     inline bool getHasWaitingDisconnects() const{
@@ -225,26 +239,34 @@ private:
             if (!getIsStillConnected(kvpair.first)) continue;
             switch(kvpair.second.scheme){
                 case(ExecutorScheme::SYNCHRONOUS):
-                    return runSynchronous(kvpair.second.slot, p...);
+                    runSynchronous(kvpair.second.slot, p...);
+                    break;
                 case(ExecutorScheme::ASYNCHRONOUS):
-                    return runAsynchronous(kvpair.second.slot, p...);
+                    runAsynchronous(kvpair.first, kvpair.second.slot, p...);
+                    break;
                 case(ExecutorScheme::STRAND):
-                    return runStrands(kvpair.first, kvpair.second.slot, p...);
+                    runStrands(kvpair.first, kvpair.second.slot, p...);
+                    break;
                 case(ExecutorScheme::THREAD_POOLED):
-                    return runThreadPooled(kvpair.second.slot, p...);
+                    runThreadPooled(kvpair.first, kvpair.second.slot, p...);
+                    break;
             }
         }
     }
 
-    inline void runThreadPooled(const std::function<void(Args...)> &function, const Args &... p) const {
-        BSignals::details::WheeledThreadPool::run([&function, p...](){function(p...);});
+    inline void runThreadPooled(const uint32_t &id, const std::function<void(Args...)> &function, const Args &... p) const {
+        BSignals::details::WheeledThreadPool::run([this, &id, &function, p...](){
+            if (!enableEmissionGuard || getIsStillConnectedFromExecutor(id))
+                function(p...);
+        });
     }
     
-    inline void runAsynchronous(const std::function<void(Args...)> &function, const Args &... p) const {
+    inline void runAsynchronous(const uint32_t &id, const std::function<void(Args...)> &function, const Args &... p) const {
         sem.acquire();
-        std::thread slotThread([this, function, p...](){
-            function(p...);
-            sem.release();                
+        std::thread slotThread([this, &id, &function, p...](){
+            if (!enableEmissionGuard || getIsStillConnectedFromExecutor(id))
+                function(p...);
+            sem.release();
         });
         slotThread.detach();
     }
@@ -305,6 +327,7 @@ private:
     
     //Async Emit Semaphore
     mutable BSignals::details::Semaphore sem {1024};
+    mutable std::vector<std::thread> asyncThreads;
     
     //EmissionGuard determines if it is necessary to guard emission with a shared mutex
     //This is only required if connection/disconnection could be interleaved with emission

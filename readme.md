@@ -214,6 +214,7 @@ with tasks allocated to each queue using round robin scheduling
 thread pool
 - Benchmark emit and connected function completion time against other 
 signals/slots implementations
+- RAII style scoping mechanism for connections
 
 ##Limitations
 - Requires a C++14 compiler (for shared mutex)
