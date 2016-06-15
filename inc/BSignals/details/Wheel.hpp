@@ -27,7 +27,7 @@ public:
     }
     
     const uint32_t size(){
-        return nElems;
+        return wheelymajig.size();
     }
 
 private:
@@ -35,13 +35,12 @@ private:
         uint32_t oldValue = shared.load();
         uint32_t newValue;
         do {
-            newValue = (oldValue+1)%nElems;
+            newValue = (oldValue+1)%wheelymajig.size();
         } while (!shared.compare_exchange_weak(oldValue, newValue));
         return oldValue;
     }
     std::atomic<uint32_t> currentElement{0};
     std::array<T, N> wheelymajig;
-    const uint32_t nElems{N};
 };    
 }}
 

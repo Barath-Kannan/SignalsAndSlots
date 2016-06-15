@@ -94,7 +94,7 @@ public:
     }
     
     void blockingDequeue(T& output){
-        std::shared_lock<std::shared_timed_mutex> lock(_mutex);
+        std::unique_lock<std::shared_timed_mutex> lock(_mutex);
         waitingReader = true;
         while (!dequeue(output)){
             _cv.wait(_mutex);

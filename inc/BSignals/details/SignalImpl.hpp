@@ -103,34 +103,28 @@ public:
     }
     
     int connectSlot(const ExecutorScheme &scheme, std::function<void(Args...)> slot) const {
-        std::unique_lock<std::shared_timed_mutex> lock(signalLock);
         uint32_t id = currentId.fetch_add(1);
-        auto *slotMap = getSlotMap(scheme);
-        slotMap->emplace(id, slot);
-        if (scheme == ExecutorScheme::STRAND){
-            strandQueues[id];
-            strandThreads.emplace(id, std::thread(&SignalImpl::queueListener, this, id));
+        if (enableEmissionGuard){
+            std::unique_lock<std::shared_timed_mutex> lock(backBufferLock);
+            connectBuffer[id] = connectDescriptor{scheme, slot};
+            return id;
         }
-        else if (scheme == ExecutorScheme::THREAD_POOLED){
-            BSignals::details::WheeledThreadPool::startup();
+        else{
+            return connectSlotFunction(id, scheme, slot);
         }
-        return (int)id;
     }
     
-    void disconnectSlot(const uint32_t &id) const {
-        std::unique_lock<std::shared_timed_mutex> lock(signalLock);
-        std::map<uint32_t, std::function<void(Args...)>> *slotMap = findSlotMapWithId(id);
-        if (slotMap == nullptr) return;
-        if (slotMap == &strandSlots){
-            strandQueues[id].enqueue(nullptr);
-            strandThreads[id].join();
-            strandThreads.erase(id);
-            strandQueues.erase(id);
+    void disconnectSlot(const int &id) const{
+        if (enableEmissionGuard){
+            std::unique_lock<std::shared_timed_mutex> lock(backBufferLock);
+            disconnectBuffer.insert(id);
         }
-        slotMap->erase(id);
+        else{
+            disconnectSlotFunction(id);
+        }
     }
     
-    void disconnectAllSlots() const { 
+    void disconnectAllSlots() const{
         std::unique_lock<std::shared_timed_mutex> lock(signalLock);
         for (auto &q : strandQueues){
             q.second.enqueue(nullptr);
@@ -155,6 +149,33 @@ private:
     SignalImpl<Args...>(const SignalImpl<Args...>& that) = delete;
     void operator=(const SignalImpl<Args...>&) = delete;
     
+    inline void disconnectSlotFunction(const int &id) const{
+        std::unique_lock<std::shared_timed_mutex> lock(signalLock);
+        std::map<uint32_t, std::function<void(Args...)>> *slotMap = findSlotMapWithId(id);
+        if (slotMap == nullptr) return;
+        if (slotMap == &strandSlots){
+            strandQueues[id].enqueue(nullptr);
+            strandThreads[id].join();
+            strandThreads.erase(id);
+            strandQueues.erase(id);
+        }
+        slotMap->erase(id);
+    }
+    
+    inline int connectSlotFunction(const int &id, const ExecutorScheme &scheme, std::function<void(Args...)> slot) const {
+        std::unique_lock<std::shared_timed_mutex> lock(signalLock);
+        auto *slotMap = getSlotMap(scheme);
+        slotMap->emplace(id, slot);
+        if (scheme == ExecutorScheme::STRAND){
+            strandQueues[id];
+            strandThreads.emplace(id, std::thread(&SignalImpl::queueListener, this, id));
+        }
+        else if (scheme == ExecutorScheme::THREAD_POOLED){
+            BSignals::details::WheeledThreadPool::startup();
+        }
+        return (int)id;
+    }
+    
     inline void emitSignalUnsafe(const Args &... p) const {
         for (auto const &slot : synchronousSlots){
             runSynchronous(slot.second, p...);
@@ -173,9 +194,55 @@ private:
         }
     }
     
+    inline bool getIsStillConnected(int const &id) const{
+        std::shared_lock<std::shared_timed_mutex> lock(backBufferLock);
+        return (disconnectBuffer.count(id) == 0);
+    }
+    
+    inline bool getHasWaitingDisconnects() const{
+        std::shared_lock<std::shared_timed_mutex> lock(backBufferLock);
+        return (!disconnectBuffer.empty());
+    }
+    
+    inline bool getHasWaitingConnects() const{
+        std::shared_lock<std::shared_timed_mutex> lock(backBufferLock);
+        return (!connectBuffer.empty());
+    }
+    
+    inline bool getHasWaitingConnectsOrDisconnects() const{
+        std::shared_lock<std::shared_timed_mutex> lock(backBufferLock);
+        return (!connectBuffer.empty() | !disconnectBuffer.empty());
+    }
+    
     inline void emitSignalThreadSafe(const Args &... p) const {
+        if (getHasWaitingConnectsOrDisconnects()){
+            std::unique_lock<std::shared_timed_mutex> bbLock(backBufferLock);
+            while (!connectBuffer.empty()){
+                auto it = connectBuffer.begin();
+                connectSlotFunction(it->first, it->second.scheme, it->second.slot);
+                connectBuffer.erase(it);
+            }
+            while (!disconnectBuffer.empty()){
+                disconnectSlotFunction(*disconnectBuffer.begin());
+                disconnectBuffer.erase(disconnectBuffer.begin());
+            }
+        }
         std::shared_lock<std::shared_timed_mutex> lock(signalLock);
-        emitSignalUnsafe(p...);
+        for (auto const &slot : synchronousSlots){
+            if (getIsStillConnected(slot.first)) runSynchronous(slot.second, p...);
+        }
+        
+        for (auto const &slot : asynchronousSlots){
+            if (getIsStillConnected(slot.first)) runAsynchronous(slot.second, p...);
+        }
+        
+        for (auto const &slot : strandSlots){
+            if (getIsStillConnected(slot.first)) runStrands(slot.first, slot.second, p...);
+        }
+        
+        for (auto const &slot : threadPooledSlots){
+            if (getIsStillConnected(slot.first)) runThreadPooled(slot.second, p...);
+        }
     }
 
     inline void runThreadPooled(const std::function<void(Args...)> &function, const Args &... p) const {
@@ -288,6 +355,16 @@ private:
     mutable std::map<uint32_t, std::function<void(Args...)>> strandSlots;
     mutable std::map<uint32_t, std::function<void(Args...)>> threadPooledSlots;
 
+    struct connectDescriptor{
+        ExecutorScheme scheme;
+        std::function<void(Args...)> slot;
+    };
+    //Disconnect backbuffer
+    mutable std::set<uint32_t> disconnectBuffer;
+    //Connect backbuffer
+    mutable std::map<uint32_t, connectDescriptor> connectBuffer;
+    //Backbuffer locks
+    mutable std::shared_timed_mutex backBufferLock;
 };
 
 }}

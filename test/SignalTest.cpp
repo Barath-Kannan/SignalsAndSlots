@@ -266,7 +266,7 @@ TEST_F(SignalTest, MemberFunction) {
 
 TEST_P(SignalTestParametrized, IntenseUsage) {
     auto tupleParams = GetParam();
-    SignalTestParameters params = {::testing::get<0>(tupleParams), ::testing::get<1>(tupleParams), ::testing::get<2>(tupleParams), ::testing::get<3>(tupleParams)};
+    SignalTestParameters params = {::testing::get<0>(tupleParams), ::testing::get<1>(tupleParams), ::testing::get<2>(tupleParams), ::testing::get<3>(tupleParams), ::testing::get<4>(tupleParams)};
     BasicTimer bt, bt2;
 
     cout << "Intense usage test for signal type: ";
@@ -289,7 +289,7 @@ TEST_P(SignalTestParametrized, IntenseUsage) {
     atomic<uint32_t> completedFunctions;
     completedFunctions = 0;
     cout << "Emissions: " << params.nEmissions << ", Connections: " << params.nConnections <<
-            ", Operations: " << params.nOperations << endl;
+            ", Operations: " << params.nOperations << ", Thread Safe: " << params.threadSafe << endl;
 
     typedef uint32_t sigType;
     auto func = ([&params, &completedFunctions](sigType x) {
@@ -301,14 +301,14 @@ TEST_P(SignalTestParametrized, IntenseUsage) {
     });
 
     bt.start();
-    for (uint32_t i = 0; i < 10; i++) {
+    for (uint32_t i = 0; i < 100; i++) {
         func(sigType{i});
     }
     bt.stop();
-    completedFunctions -= 10;
-    cout << "Function runtime overhead: " << bt.getElapsedNanoseconds() / 10 << "ns" << endl;
+    completedFunctions -= 100;
+    cout << "Function runtime overhead: " << bt.getElapsedNanoseconds() / 100 << "ns" << endl;
 
-    Signal<sigType> signal;
+    Signal<sigType> signal(params.threadSafe);
     cout << "Connecting " << params.nConnections << " functions" << endl;
     for (uint32_t i = 0; i < params.nConnections; i++) {
         signal.connectSlot(params.scheme, func);
@@ -381,7 +381,7 @@ TEST_P(SignalTestParametrized, LengthyUsage) {
     atomic<uint32_t> completedFunctions;
     completedFunctions = 0;
     cout << "Emissions: " << params.nEmissions << ", Connections: " << params.nConnections <<
-            ", Operations: " << params.nOperations << endl;
+            ", Operations: " << params.nOperations << ", Thread Safe: " << params.threadSafe << endl;
 
     typedef uint32_t sigType;
     auto func = ([&params, &completedFunctions](sigType x) {
@@ -397,7 +397,7 @@ TEST_P(SignalTestParametrized, LengthyUsage) {
     completedFunctions -= 100;
     cout << "Function runtime overhead: " << bt.getElapsedNanoseconds() / 100 << "ns" << endl;
 
-    Signal<sigType> signal;
+    Signal<sigType> signal(params.threadSafe);
     cout << "Connecting " << params.nConnections << " functions" << endl;
     for (uint32_t i = 0; i < params.nConnections; i++) {
         signal.connectSlot(params.scheme, func);
@@ -452,6 +452,7 @@ INSTANTIATE_TEST_CASE_P(
         Values(1, 10, 50), //number of connections
         Values(10, 1000, 10000), //number of emissions per connection
         Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
+        Values(false),
         Values(ExecutorScheme::SYNCHRONOUS)
         )
         );
@@ -463,6 +464,7 @@ INSTANTIATE_TEST_CASE_P(
         Values(1, 10, 50), //number of connections
         Values(10, 1000, 10000), //number of emissions per connection
         Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
+        Values(false),
         Values(ExecutorScheme::ASYNCHRONOUS)
         )
         );
@@ -474,6 +476,7 @@ INSTANTIATE_TEST_CASE_P(
         Values(1, 10, 50), //number of connections
         Values(10, 1000, 10000), //number of emissions per connection
         Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
+        Values(false),
         Values(ExecutorScheme::STRAND)
         )
         );
@@ -485,6 +488,7 @@ INSTANTIATE_TEST_CASE_P(
         Values(1, 10, 50), //number of connections
         Values(10, 1000, 10000), //number of emissions per connection
         Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
+        Values(false),
         Values(ExecutorScheme::THREAD_POOLED)
         )
         );
@@ -496,6 +500,7 @@ INSTANTIATE_TEST_CASE_P(
         Values(1), //nconnections
         Values(10000), //number of emissions
         Values(1), //number of operations
+        Values(true, false),
         Values(ExecutorScheme::SYNCHRONOUS, ExecutorScheme::ASYNCHRONOUS, ExecutorScheme::STRAND, ExecutorScheme::THREAD_POOLED)
         )
         );

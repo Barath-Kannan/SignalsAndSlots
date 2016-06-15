@@ -92,7 +92,8 @@ For more examples, see SignalTest.cpp in the test directory.
 - Interleaved connect/disconnect with emissions are not thread safe
 
 If you cannot make guarantees that the emission and connection/disconnection will
-not be interleaved, enable thread safety using the constructor:
+not be interleaved, or you wish to connect/disconnect from a signal from within
+slot functions, enable thread safety using the constructor:
 ```
     BSignals::Signal<T1,T2,T...,TN> signalB(true);
 ```
@@ -108,7 +109,7 @@ constructor with a boolean and unsigned integer, as below.
 ```
 ####Connect
 Connected functions must have a return type of void and a signature matching that
-of the signal object. Given a Signal object:
+of the signal object - i.e. given a Signal object:
 ```
     BSignals::Signal<int, int> signalInt;
 ```
@@ -148,8 +149,8 @@ To emit on a given signal, call emitSignal with the emission parameters.
 ####Disconnect
 To disconnect a slot, call disconnectSlot with the id acquired on connection.
 ```
-    //disconnection/connection should not be interleaved with emission unless the
-    //signal was initialized with thread safety enabled
+    //disconnection/connection should not be interleaved with emission
+    //unless the signal was initialized with thread safety enabled
     int id = signal.connectSlot(...);
     signal.disconnectSlot(id);
 ```
@@ -174,7 +175,7 @@ different executor modes.
 - A detached thread is spawned on emission.
 - The thread is destroyed when the connected slot returns.
 - Preferred for slots when 
-    - they have long execution time
+    - they have very long, unbounded, or infinite execution time
     - they are independent
     - additional thread overhead is not an issue
     - separate thread required for lifetime of invocation
@@ -185,7 +186,7 @@ different executor modes.
 - Emitted parameters are enqueued on the waiting thread to be processed synchronously
 - The underlying queue is a (mostly) lock free multi-producer single consumer queue
 - Preferred for slots when
-    - they have long execution time
+    - they have long, bounded, or finite execution time
     - emissions occur in blocks
     - the additional time overhead of creating/destroying a thread for each slot would not be performant
     - emissions need to be processed in order of arrival (FIFO)
@@ -201,7 +202,7 @@ waiting thread queues
 - The underlying structure is an array of multi-producer single consumer queues,
 with tasks allocated to each queue using round robin scheduling
 - Preferred for slots when
-    - they have long execution time
+    - they have long, bounded, or finite execution time
     - the overhead of creating/destroying a thread for each slot would not be performant
     - the overhead of a waiting thread for each slot (as in the strand executor scheme) is unnecessary
     - connected functions do NOT need to be processed in order of arrival
