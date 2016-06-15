@@ -174,14 +174,16 @@ private:
     
     inline void emitSignalUnsafe(const Args &... p) const {
         for (auto const &kvpair : slots){
-            if (kvpair.second.scheme == ExecutorScheme::SYNCHRONOUS)
-                return runSynchronous(kvpair.second.slot, p...);
-            if (kvpair.second.scheme == ExecutorScheme::ASYNCHRONOUS)
-                return runAsynchronous(kvpair.second.slot, p...);
-            if (kvpair.second.scheme == ExecutorScheme::STRAND)
-                return runStrands(kvpair.first, kvpair.second.slot, p...);
-            if (kvpair.second.scheme == ExecutorScheme::THREAD_POOLED)
-                return runThreadPooled(kvpair.second.slot, p...);
+            switch(kvpair.second.scheme){
+                case(ExecutorScheme::SYNCHRONOUS):
+                    return runSynchronous(kvpair.second.slot, p...);
+                case(ExecutorScheme::ASYNCHRONOUS):
+                    return runAsynchronous(kvpair.second.slot, p...);
+                case(ExecutorScheme::STRAND):
+                    return runStrands(kvpair.first, kvpair.second.slot, p...);
+                case(ExecutorScheme::THREAD_POOLED):
+                    return runThreadPooled(kvpair.second.slot, p...);
+            }
         }
     }
     
@@ -221,14 +223,16 @@ private:
         std::shared_lock<std::shared_timed_mutex> lock(signalLock);
         for (auto const &kvpair : slots){
             if (!getIsStillConnected(kvpair.first)) continue;
-            if (kvpair.second.scheme == ExecutorScheme::SYNCHRONOUS)
-                return runSynchronous(kvpair.second.slot, p...);
-            if (kvpair.second.scheme == ExecutorScheme::ASYNCHRONOUS)
-                return runAsynchronous(kvpair.second.slot, p...);
-            if (kvpair.second.scheme == ExecutorScheme::STRAND)
-                return runStrands(kvpair.first, kvpair.second.slot, p...);
-            if (kvpair.second.scheme == ExecutorScheme::THREAD_POOLED)
-                return runThreadPooled(kvpair.second.slot, p...);
+            switch(kvpair.second.scheme){
+                case(ExecutorScheme::SYNCHRONOUS):
+                    return runSynchronous(kvpair.second.slot, p...);
+                case(ExecutorScheme::ASYNCHRONOUS):
+                    return runAsynchronous(kvpair.second.slot, p...);
+                case(ExecutorScheme::STRAND):
+                    return runStrands(kvpair.first, kvpair.second.slot, p...);
+                case(ExecutorScheme::THREAD_POOLED):
+                    return runThreadPooled(kvpair.second.slot, p...);
+            }
         }
     }
 
