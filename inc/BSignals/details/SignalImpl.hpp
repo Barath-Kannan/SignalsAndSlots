@@ -106,7 +106,7 @@ public:
         uint32_t id = currentId.fetch_add(1);
         if (enableEmissionGuard){
             std::unique_lock<std::shared_timed_mutex> lock(backBufferLock);
-            connectBuffer[id] = connectDescriptor{scheme, slot};
+            connectBuffer.emplace(id, ConnectDescriptor{scheme, slot});
             return id;
         }
         else{
@@ -135,10 +135,7 @@ public:
         strandThreads.clear();
         strandQueues.clear();
         
-        synchronousSlots.clear();
-        asynchronousSlots.clear();
-        strandSlots.clear();
-        threadPooledSlots.clear();
+        slots.clear();
     }
     
     void emitSignal(const Args &... p) const {
@@ -151,21 +148,20 @@ private:
     
     inline void disconnectSlotFunction(const int &id) const{
         std::unique_lock<std::shared_timed_mutex> lock(signalLock);
-        std::map<uint32_t, std::function<void(Args...)>> *slotMap = findSlotMapWithId(id);
-        if (slotMap == nullptr) return;
-        if (slotMap == &strandSlots){
+        if (!slots.count(id)) return;
+        auto &entry = slots[id];
+        if (entry.scheme == ExecutorScheme::STRAND){
             strandQueues[id].enqueue(nullptr);
             strandThreads[id].join();
             strandThreads.erase(id);
             strandQueues.erase(id);
         }
-        slotMap->erase(id);
+        slots.erase(id);
     }
     
     inline int connectSlotFunction(const int &id, const ExecutorScheme &scheme, std::function<void(Args...)> slot) const {
         std::unique_lock<std::shared_timed_mutex> lock(signalLock);
-        auto *slotMap = getSlotMap(scheme);
-        slotMap->emplace(id, slot);
+        slots.emplace(id, ConnectDescriptor{scheme, slot});
         if (scheme == ExecutorScheme::STRAND){
             strandQueues[id];
             strandThreads.emplace(id, std::thread(&SignalImpl::queueListener, this, id));
@@ -177,20 +173,15 @@ private:
     }
     
     inline void emitSignalUnsafe(const Args &... p) const {
-        for (auto const &slot : synchronousSlots){
-            runSynchronous(slot.second, p...);
-        }
-        
-        for (auto const &slot : asynchronousSlots){
-            runAsynchronous(slot.second, p...);
-        }
-        
-        for (auto const &slot : strandSlots){
-            runStrands(slot.first, slot.second, p...);
-        }
-        
-        for (auto const &slot : threadPooledSlots){
-            runThreadPooled(slot.second, p...);
+        for (auto const &kvpair : slots){
+            if (kvpair.second.scheme == ExecutorScheme::SYNCHRONOUS)
+                return runSynchronous(kvpair.second.slot, p...);
+            if (kvpair.second.scheme == ExecutorScheme::ASYNCHRONOUS)
+                return runAsynchronous(kvpair.second.slot, p...);
+            if (kvpair.second.scheme == ExecutorScheme::STRAND)
+                return runStrands(kvpair.first, kvpair.second.slot, p...);
+            if (kvpair.second.scheme == ExecutorScheme::THREAD_POOLED)
+                return runThreadPooled(kvpair.second.slot, p...);
         }
     }
     
@@ -228,20 +219,16 @@ private:
             }
         }
         std::shared_lock<std::shared_timed_mutex> lock(signalLock);
-        for (auto const &slot : synchronousSlots){
-            if (getIsStillConnected(slot.first)) runSynchronous(slot.second, p...);
-        }
-        
-        for (auto const &slot : asynchronousSlots){
-            if (getIsStillConnected(slot.first)) runAsynchronous(slot.second, p...);
-        }
-        
-        for (auto const &slot : strandSlots){
-            if (getIsStillConnected(slot.first)) runStrands(slot.first, slot.second, p...);
-        }
-        
-        for (auto const &slot : threadPooledSlots){
-            if (getIsStillConnected(slot.first)) runThreadPooled(slot.second, p...);
+        for (auto const &kvpair : slots){
+            if (!getIsStillConnected(kvpair.first)) continue;
+            if (kvpair.second.scheme == ExecutorScheme::SYNCHRONOUS)
+                return runSynchronous(kvpair.second.slot, p...);
+            if (kvpair.second.scheme == ExecutorScheme::ASYNCHRONOUS)
+                return runAsynchronous(kvpair.second.slot, p...);
+            if (kvpair.second.scheme == ExecutorScheme::STRAND)
+                return runStrands(kvpair.first, kvpair.second.slot, p...);
+            if (kvpair.second.scheme == ExecutorScheme::THREAD_POOLED)
+                return runThreadPooled(kvpair.second.slot, p...);
         }
     }
 
@@ -281,32 +268,6 @@ private:
     template<typename F, typename I>
     std::function<void(Args...)> objectBind(F&& function, I* instance) const {
         return objectBind(function, *instance);
-    }
-    
-    std::map<uint32_t, std::function<void(Args...)>> *getSlotMap(const ExecutorScheme &scheme) const{
-        switch(scheme){
-            case (ExecutorScheme::ASYNCHRONOUS):
-                return &asynchronousSlots;
-            case (ExecutorScheme::STRAND):
-                return &strandSlots;
-            case (ExecutorScheme::THREAD_POOLED):
-                return &threadPooledSlots;
-            default:
-            case (ExecutorScheme::SYNCHRONOUS):
-                return &synchronousSlots;
-        }
-    }
-    
-    std::map<uint32_t, std::function<void(Args...)>> *findSlotMapWithId(const uint32_t &id) const{
-        if (synchronousSlots.count(id))
-            return &synchronousSlots;
-        if (asynchronousSlots.count(id))
-            return &asynchronousSlots;
-        if (strandSlots.count(id))
-            return &strandSlots;
-        if (threadPooledSlots.count(id))
-            return &threadPooledSlots;
-        return nullptr;
     }
         
     void queueListener(const uint32_t &id) const{
@@ -349,21 +310,21 @@ private:
     mutable std::map<uint32_t, BSignals::details::MPSCQueue<std::function<void()>>> strandQueues;
     mutable std::map<uint32_t, std::thread> strandThreads;
     
-    //Slot Maps
-    mutable std::map<uint32_t, std::function<void(Args...)>> synchronousSlots;
-    mutable std::map<uint32_t, std::function<void(Args...)>> asynchronousSlots;
-    mutable std::map<uint32_t, std::function<void(Args...)>> strandSlots;
-    mutable std::map<uint32_t, std::function<void(Args...)>> threadPooledSlots;
-
-    struct connectDescriptor{
+    struct ConnectDescriptor{
         ExecutorScheme scheme;
         std::function<void(Args...)> slot;
     };
+    
+    //Slot Map
+    mutable std::map<uint32_t, ConnectDescriptor> slots;
+    
     //Disconnect backbuffer
     mutable std::set<uint32_t> disconnectBuffer;
+    
     //Connect backbuffer
-    mutable std::map<uint32_t, connectDescriptor> connectBuffer;
-    //Backbuffer locks
+    mutable std::map<uint32_t, ConnectDescriptor> connectBuffer;
+    
+    //Backbuffer lock
     mutable std::shared_timed_mutex backBufferLock;
 };
 
