@@ -88,7 +88,7 @@ For more examples, see SignalTest.cpp in the test directory.
 ```
 - Full thread safety is disabled by default for performance reasons
 - Interleaved emissions are always thread safe
-- Interleaved connects/disconnects always are thread safe
+- Interleaved connects/disconnects are always thread safe
 - Interleaved connect/disconnect with emissions are not thread safe
 
 If you cannot make guarantees that the emission and connection/disconnection will
