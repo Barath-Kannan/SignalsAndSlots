@@ -18,9 +18,6 @@
 #include <thread>
 #include <utility>
 #include <type_traits>
-#include <iostream>
-using std::cout;
-using std::endl;
 
 #include "BSignals/details/MPSCQueue.hpp"
 #include "BSignals/details/WheeledThreadPool.h"
