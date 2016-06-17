@@ -35,41 +35,67 @@
  */
 
 
-#ifndef MPSCQUEUE_HPP
-#define MPSCQUEUE_HPP
+#ifndef MPSCQUEUESECONDARY_HPP
+#define MPSCQUEUESECONDARY_HPP
 
 #include <atomic>
 #include <shared_mutex>
 #include <condition_variable>
 #include <chrono>
 #include <thread>
+#include <vector>
 #include <assert.h>
+#include <iostream>
+#include "BSignals/details/Wheel.hpp"
+#include "BSignals/details/BasicTimer.h"
+using std::cout;
+using std::endl;
 
 namespace BSignals{ namespace details{
 
 template<typename T>
-class MPSCQueue{
+class MPSCQueueSecondaryVariant{
 public:
 
-    MPSCQueue() :
+    MPSCQueueSecondaryVariant() :
         _head(new buffer_node_t),
-        _tail(_head.load(std::memory_order_relaxed)){
-        buffer_node_t* front = _head.load(std::memory_order_relaxed);
-        front->next.store(nullptr, std::memory_order_relaxed);
+        _tail(_head.load(std::memory_order_relaxed)),
+        _recycleHead(new buffer_node_t),
+        _recycleTail(_recycleHead.load(std::memory_order_relaxed)){
+//            buffer_node_t *prev = _recycleHead.load();
+//            for (uint32_t i=0; i<5; i++){
+//                buffer_node_t *current = new buffer_node_t;
+//                //cout << "Enqueue address: " << current << endl;
+//                enqueueRecycle(current);
+//            }
+//            for (uint32_t i=0; i<5; i++){
+//                buffer_node_t *current = dequeueRecycle();
+//                //cout << "Dequeue address: " << current << endl;
+//                enqueueRecycle(current);
+//            }
+//            std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 
-    ~MPSCQueue(){
+    ~MPSCQueueSecondaryVariant(){
         T output;
         while (this->dequeue(output)) {}
         buffer_node_t* front = _head.load(std::memory_order_relaxed);
         delete front;
     }
-    
-    void enqueue(const T& input){
-        buffer_node_t* node = (new buffer_node_t);
-        node->data = input;
-        node->next.store(nullptr, std::memory_order_relaxed);
 
+    std::atomic<uint32_t> enqueueCounter{0};
+    void enqueue(const T& input){
+        
+        buffer_node_t* node = dequeueRecycle(); 
+        if (node == nullptr){
+//            uint32_t n = enqueueCounter++;
+//            cout << "Create enq: " << n << endl;
+            node = new buffer_node_t{input};
+        }
+        else{
+            node->data = input;
+        }
+        
         buffer_node_t* prev_head = _head.exchange(node, std::memory_order_acq_rel);
         prev_head->next.store(node, std::memory_order_release);
 
@@ -79,7 +105,12 @@ public:
         }
     }
 
+    std::atomic<uint32_t> dequeueCounter{0};
     bool dequeue(T& output){
+        if (dequeueCounter == 0){
+            std::this_thread::sleep_for(std::chrono::seconds(10));
+        }
+        dequeueCounter++;
         buffer_node_t* tail = _tail.load(std::memory_order_relaxed);
         buffer_node_t* next = tail->next.load(std::memory_order_acquire);
 
@@ -89,7 +120,11 @@ public:
 
         output = next->data;
         _tail.store(next, std::memory_order_release);
-        delete tail;
+        ///delete tail;
+        
+        enqueueRecycle(tail);
+//        uint32_t n = dequeueCounter++;
+//        cout << "Dequeue: " << n << endl;
         return true;
     }
     
@@ -106,17 +141,40 @@ private:
 
     struct buffer_node_t{
         T                           data;
-        std::atomic<buffer_node_t*> next;
+        std::atomic<buffer_node_t*> next{nullptr};
     };
+
+    void enqueueRecycle(buffer_node_t* node){
+        buffer_node_t* prev_head = _recycleHead.exchange(node, std::memory_order_acq_rel);
+        prev_head->next.store(node, std::memory_order_release);
+//        cout << "rHead: " << node << endl;
+//        cout << "prevHead: " << prev_head << endl;
+    }
+    
+    buffer_node_t* dequeueRecycle(){
+        buffer_node_t* tail = _recycleTail.load(std::memory_order_relaxed);
+        buffer_node_t* next = tail->next.load(std::memory_order_acquire);
+        if (next == nullptr) {
+            return nullptr;
+        }
+        
+        _recycleTail.store(next, std::memory_order_release);
+        //tail->next = nullptr;
+        return tail;
+    }
 
     std::atomic<buffer_node_t*> _head;
     std::atomic<buffer_node_t*> _tail;
+    
+    std::atomic<buffer_node_t*> _recycleHead;
+    std::atomic<buffer_node_t*> _recycleTail;
+    
     std::shared_timed_mutex _mutex;
     std::condition_variable_any _cv;
     bool waitingReader{false};
     
-    MPSCQueue(const MPSCQueue&) {}
-    void operator=(const MPSCQueue&) {}
+    MPSCQueueSecondaryVariant(const MPSCQueueSecondaryVariant&) {}
+    void operator=(const MPSCQueueSecondaryVariant&) {}
 };
 }}
 

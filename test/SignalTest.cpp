@@ -6,7 +6,7 @@
 #include <atomic>
 
 #include "BSignals/details/BasicTimer.h"
-#include "BSignals/details/SafeQueue.hpp"
+#include "SafeQueue.hpp"
 #include "FunctionTimeRegular.hpp"
 
 using BSignals::details::SafeQueue;
@@ -299,14 +299,14 @@ TEST_P(SignalTestParametrized, IntenseUsage) {
         }
         completedFunctions++;
     });
-
-    bt.start();
-    for (uint32_t i = 0; i < 100; i++) {
-        func(sigType{i});
-    }
-    bt.stop();
-    completedFunctions -= 100;
-    cout << "Function runtime overhead: " << bt.getElapsedNanoseconds() / 100 << "ns" << endl;
+//
+//    bt.start();
+//    for (uint32_t i = 0; i < 100; i++) {
+//        func(sigType{i});
+//    }
+//    bt.stop();
+//    completedFunctions -= 100;
+//    cout << "Function runtime overhead: " << bt.getElapsedNanoseconds() / 100 << "ns" << endl;
 
     Signal<sigType> signal(params.threadSafe);
     cout << "Connecting " << params.nConnections << " functions" << endl;
@@ -378,8 +378,7 @@ TEST_P(SignalTestParametrized, LengthyUsage) {
     }
     cout << endl;
     uint32_t counter = 0;
-    atomic<uint32_t> completedFunctions;
-    completedFunctions = 0;
+    atomic<uint32_t> completedFunctions{0};
     cout << "Emissions: " << params.nEmissions << ", Connections: " << params.nConnections <<
             ", Operations: " << params.nOperations << ", Thread Safe: " << params.threadSafe << endl;
 
@@ -498,7 +497,7 @@ INSTANTIATE_TEST_CASE_P(
         SignalTestParametrized,
         testing::Combine(
         Values(1), //nconnections
-        Values(10000), //number of emissions
+        Values(100000), //number of emissions
         Values(1), //number of operations
         Values(true, false),
         Values(ExecutorScheme::SYNCHRONOUS, ExecutorScheme::ASYNCHRONOUS, ExecutorScheme::STRAND, ExecutorScheme::THREAD_POOLED)

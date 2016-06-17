@@ -8,7 +8,6 @@
 #ifndef WHEEL_HPP
 #define WHEEL_HPP
 
-#include <vector>
 #include <atomic>
 
 namespace BSignals{ namespace details{
@@ -19,7 +18,7 @@ class Wheel{
 public:
     
     T& getSpoke(){
-        return wheelymajig[fetchWrapIncrement(currentElement)];
+        return wheelymajig[fetchWrapIncrement()];
     }
     
     T& getSpoke(uint32_t index){
@@ -27,16 +26,16 @@ public:
     }
     
     const uint32_t size(){
-        return wheelymajig.size();
+        return N;
     }
 
 private:
-    uint32_t fetchWrapIncrement(std::atomic<uint32_t> &shared){
-        uint32_t oldValue = shared.load();
+    uint32_t fetchWrapIncrement(){
+        uint32_t oldValue = currentElement.load();
         uint32_t newValue;
         do {
-            newValue = (oldValue+1)%wheelymajig.size();
-        } while (!shared.compare_exchange_weak(oldValue, newValue));
+            newValue = (oldValue+1)%N;
+        } while (!currentElement.compare_exchange_weak(oldValue, newValue));
         return oldValue;
     }
     std::atomic<uint32_t> currentElement{0};

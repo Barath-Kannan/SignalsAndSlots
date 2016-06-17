@@ -92,8 +92,8 @@ For more examples, see SignalTest.cpp in the test directory.
 - Interleaved connect/disconnect with emissions are not thread safe
 
 If you cannot make guarantees that the emission and connection/disconnection will
-not be interleaved, or you wish to connect/disconnect from a signal from within
-slot functions, enable thread safety using the constructor:
+not be interleaved, or you wish to connect/disconnect a slot or slots from within a
+slot function, enable thread safety using the constructor:
 ```
     BSignals::Signal<T1,T2,T...,TN> signalB(true);
 ```

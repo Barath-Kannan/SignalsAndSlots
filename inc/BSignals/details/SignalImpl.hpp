@@ -20,6 +20,9 @@
 #include <type_traits>
 
 #include "BSignals/details/MPSCQueue.hpp"
+#include "BSignals/details/MPSCQueueVariant.hpp"
+#include "BSignals/details/MPSCQueueSecondaryVariant.hpp"
+#include "BSignals/details/MPMCQueue.hpp"
 #include "BSignals/details/WheeledThreadPool.h"
 #include "BSignals/details/Semaphore.h"
 
@@ -140,7 +143,7 @@ public:
     }
     
     void emitSignal(const Args &... p) const {
-        return enableEmissionGuard ? emitSignalThreadSafe(p...) : emitSignalUnsafe(p...);
+        enableEmissionGuard ? emitSignalThreadSafe(p...) : emitSignalUnsafe(p...);
     }
     
 private:
@@ -168,27 +171,31 @@ private:
             strandThreads.emplace(id, std::thread(&SignalImpl::queueListener, this, id));
         }
         else if (scheme == ExecutorScheme::THREAD_POOLED){
-            BSignals::details::WheeledThreadPool::startup();
+            WheeledThreadPool::startup();
         }
         return (int)id;
     }
     
+    inline void invokeRelevantExecutor(const ExecutorScheme &scheme, const uint32_t &id, const std::function<void(Args...)> &slot, const Args &... p) const{
+        switch(scheme){
+            case(ExecutorScheme::SYNCHRONOUS):
+                runSynchronous(id, slot, p...);
+                return;
+            case(ExecutorScheme::ASYNCHRONOUS):
+                runAsynchronous(id, slot, p...);
+                return;
+            case(ExecutorScheme::STRAND):
+                runStrands(id, slot, p...);
+                return;
+            case(ExecutorScheme::THREAD_POOLED):
+                runThreadPooled(id, slot, p...);
+                return;
+        }
+    }
+    
     inline void emitSignalUnsafe(const Args &... p) const {
         for (auto const &kvpair : slots){
-            switch(kvpair.second.scheme){
-                case(ExecutorScheme::SYNCHRONOUS):
-                    runSynchronous(kvpair.second.slot, p...);
-                    break;
-                case(ExecutorScheme::ASYNCHRONOUS):
-                    runAsynchronous(kvpair.first, kvpair.second.slot, p...);
-                    break;
-                case(ExecutorScheme::STRAND):
-                    runStrands(kvpair.first, kvpair.second.slot, p...);
-                    break;
-                case(ExecutorScheme::THREAD_POOLED):
-                    runThreadPooled(kvpair.first, kvpair.second.slot, p...);
-                    break;
-            }
+            invokeRelevantExecutor(kvpair.second.scheme, kvpair.first, kvpair.second.slot, p...);
         }
     }
     
@@ -234,25 +241,12 @@ private:
         std::shared_lock<std::shared_timed_mutex> lock(signalLock);
         for (auto const &kvpair : slots){
             if (!getIsStillConnected(kvpair.first)) continue;
-            switch(kvpair.second.scheme){
-                case(ExecutorScheme::SYNCHRONOUS):
-                    runSynchronous(kvpair.second.slot, p...);
-                    break;
-                case(ExecutorScheme::ASYNCHRONOUS):
-                    runAsynchronous(kvpair.first, kvpair.second.slot, p...);
-                    break;
-                case(ExecutorScheme::STRAND):
-                    runStrands(kvpair.first, kvpair.second.slot, p...);
-                    break;
-                case(ExecutorScheme::THREAD_POOLED):
-                    runThreadPooled(kvpair.first, kvpair.second.slot, p...);
-                    break;
-            }
+            invokeRelevantExecutor(kvpair.second.scheme, kvpair.first, kvpair.second.slot, p...);
         }
     }
 
     inline void runThreadPooled(const uint32_t &id, const std::function<void(Args...)> &function, const Args &... p) const {
-        BSignals::details::WheeledThreadPool::run([this, &id, &function, p...](){
+        WheeledThreadPool::run([this, &id, &function, p...](){
             if (!enableEmissionGuard || getIsStillConnectedFromExecutor(id))
                 function(p...);
         });
@@ -268,14 +262,14 @@ private:
         slotThread.detach();
     }
     
-    inline void runStrands(uint32_t asyncQueueId, const std::function<void(Args...)> &function, const Args &... p) const{
+    inline void runStrands(const uint32_t &id, const std::function<void(Args...)> &function, const Args &... p) const{
         //bind the function arguments to the function using a lambda and store
         //the newly bound function. This changes the function signature in the
         //resultant map, there are no longer any parameters in the bound function
-        strandQueues[asyncQueueId].enqueue([&function, p...](){function(p...);});
+        strandQueues[id].enqueue([&function, p...](){function(p...);});
     }
     
-    inline void runSynchronous(const std::function<void(Args...)> &function, const Args &... p) const{
+    inline void runSynchronous(const uint32_t &id, const std::function<void(Args...)> &function, const Args &... p) const{
         function(p...);
     }
     
@@ -296,7 +290,7 @@ private:
     void queueListener(const uint32_t &id) const{
         auto &q = strandQueues[id];
         std::function<void()> func = [](){};
-        auto maxWait = BSignals::details::WheeledThreadPool::getMaxWait();
+        auto maxWait = WheeledThreadPool::getMaxWait();
         std::chrono::duration<double> waitTime = std::chrono::nanoseconds(1);
         while (func){
             if (q.dequeue(func)){
@@ -323,15 +317,14 @@ private:
     mutable std::atomic<uint32_t> currentId {0};
     
     //Async Emit Semaphore
-    mutable BSignals::details::Semaphore sem {1024};
-    mutable std::vector<std::thread> asyncThreads;
+    mutable Semaphore sem {1024};
     
     //EmissionGuard determines if it is necessary to guard emission with a shared mutex
     //This is only required if connection/disconnection could be interleaved with emission
     const bool enableEmissionGuard {false};
     
     //Strand Queues and Threads
-    mutable std::map<uint32_t, BSignals::details::MPSCQueue<std::function<void()>>> strandQueues;
+    mutable std::map<uint32_t, MPMCQueue<std::function<void()>>> strandQueues;
     mutable std::map<uint32_t, std::thread> strandThreads;
     
     struct ConnectDescriptor{
