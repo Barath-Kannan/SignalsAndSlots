@@ -127,7 +127,7 @@ function name as the second.
 Alternative executor schemes can also be specified (see Executor section below 
 for more details).
 ```
-    signal.connectSlot(BSignals::ExecutorScheme::SYNCHRONOUS_DEFERRED, functionName);
+    signal.connectSlot(BSignals::ExecutorScheme::DEFERRED_SYNCHRONOUS, functionName);
     signal.connectSlot(BSignals::ExecutorScheme::ASYNCHRONOUS, functionName);
     signal.connectSlot(BSignals::ExecutorScheme::STRAND, functionName);
     signal.connectSlot(BSignals::ExecutorScheme::THREAD_POOLED, functionName);
