@@ -60,7 +60,7 @@ TEST_F(SignalTest, SynchronousSignal) {
     cout << "Emitting signal" << endl;
 
     bt.start();
-    testSignal.emitSignal(1, 2);
+    testSignal(1, 2);
     bt.stop();
     cout << "Time to emit: " << bt.getElapsedMilliseconds() << "ms" << endl;
 
