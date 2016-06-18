@@ -165,7 +165,7 @@ It is also possible to disconnect all connected slots
     signal.disconnectAllSlots();
 ```
 ##Executors
-Executors determine how a connected slot is invoked on emission. There are 4
+Executors determine how a connected slot is invoked on emission. There are 5
 different executor modes.
 
 ####Synchronous
