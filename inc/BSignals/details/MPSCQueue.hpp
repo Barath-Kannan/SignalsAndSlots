@@ -52,40 +52,30 @@ class MPSCQueue{
 public:
 
     MPSCQueue() :
-        _head(new buffer_node_t),
-        _tail(_head.load(std::memory_order_relaxed)){
-        buffer_node_t* front = _head.load(std::memory_order_relaxed);
-        front->next.store(nullptr, std::memory_order_relaxed);
-    }
+        _head(new listNode),
+        _tail(_head.load(std::memory_order_relaxed)){}
 
     ~MPSCQueue(){
         T output;
         while (this->dequeue(output)) {}
-        buffer_node_t* front = _head.load(std::memory_order_relaxed);
+        listNode* front = _head.load(std::memory_order_relaxed);
         delete front;
     }
     
     void enqueue(const T& input){
-        buffer_node_t* node = (new buffer_node_t);
-        node->data = input;
-        node->next.store(nullptr, std::memory_order_relaxed);
+        listNode* node = new listNode{input};
 
-        buffer_node_t* prev_head = _head.exchange(node, std::memory_order_acq_rel);
+        listNode* prev_head = _head.exchange(node, std::memory_order_acq_rel);
         prev_head->next.store(node, std::memory_order_release);
 
         std::shared_lock<std::shared_timed_mutex> lock(_mutex);        
-        if (waitingReader){
-            _cv.notify_one();   
-        }
+        if (waitingReader) _cv.notify_one();
     }
 
     bool dequeue(T& output){
-        buffer_node_t* tail = _tail.load(std::memory_order_relaxed);
-        buffer_node_t* next = tail->next.load(std::memory_order_acquire);
-
-        if (next == nullptr) {
-            return false;
-        }
+        listNode* tail = _tail.load(std::memory_order_relaxed);
+        listNode* next = tail->next.load(std::memory_order_acquire);
+        if (next == nullptr) return false;
 
         output = next->data;
         _tail.store(next, std::memory_order_release);
@@ -103,14 +93,13 @@ public:
     }
     
 private:
-
-    struct buffer_node_t{
+    struct listNode{
         T                           data;
-        std::atomic<buffer_node_t*> next;
+        std::atomic<listNode*> next{nullptr};
     };
 
-    std::atomic<buffer_node_t*> _head;
-    std::atomic<buffer_node_t*> _tail;
+    std::atomic<listNode*> _head;
+    std::atomic<listNode*> _tail;
     std::shared_timed_mutex _mutex;
     std::condition_variable_any _cv;
     bool waitingReader{false};
