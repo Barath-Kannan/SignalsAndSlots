@@ -18,7 +18,7 @@ The intention is to provide a fast thread safe signals/slots mechanism which is 
         - [Disconnect](#disconnect)
     - [Executors](#executors)
         - [Synchronous](#synchronous)
-        - [Deferred Synchronous] (deferred-synchronous)
+        - [Deferred Synchronous](#deferred-synchronous)
         - [Asynchronous](#asynchronous)
         - [Strand](#strand)
         - [Thread Pooled](#thread-pooled)
