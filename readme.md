@@ -148,6 +148,10 @@ To emit on a given signal, call emitSignal with the emission parameters.
 ```
     signal.emitSignal(arg1, arg2);
 ```
+You can also use the () operator overload which invokes the emitSignal function.
+```
+    signal(arg1, arg2);
+```
 ####Disconnect
 To disconnect a slot, call disconnectSlot with the id acquired on connection.
 ```
