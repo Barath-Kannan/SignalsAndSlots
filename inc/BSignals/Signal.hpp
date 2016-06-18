@@ -15,6 +15,7 @@ namespace BSignals{
 
 enum class ExecutorScheme{
     SYNCHRONOUS,
+    DEFERRED_SYNCHRONOUS,
     ASYNCHRONOUS, 
     STRAND,
     THREAD_POOLED
@@ -57,6 +58,14 @@ public:
         signalImpl.emitSignal(p...);
     }
     
+    void invokeDeferred() const{
+        signalImpl.invokeDeferred();
+    }
+    
+    void operator()(const Args &... p) const{
+        signalImpl(p...);
+    }
+    
 private:
     BSignals::details::SignalImpl<Args...> signalImpl;
     Signal<Args...>(const Signal<Args...>& that) = delete;
@@ -66,4 +75,3 @@ private:
 } /* namespace BSignals */
 
 #endif /* SIGNAL_HPP */
-

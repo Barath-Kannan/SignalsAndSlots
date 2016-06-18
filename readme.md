@@ -18,6 +18,7 @@ The intention is to provide a fast thread safe signals/slots mechanism which is 
         - [Disconnect](#disconnect)
     - [Executors](#executors)
         - [Synchronous](#synchronous)
+        - [Deferred Synchronous] (deferred-synchronous)
         - [Asynchronous](#asynchronous)
         - [Strand](#strand)
         - [Thread Pooled](#thread-pooled)
@@ -26,7 +27,7 @@ The intention is to provide a fast thread safe signals/slots mechanism which is 
 
 ##Features
 - Simple signals and slots mechanism
-- Specifiable executor (synchronous, asynchronous, strand, thread pooled)
+- Specifiable executor (synchronous, synchronous deferred, asynchronous, strand, thread pooled)
 - Constructor specifiable thread safety 
 - Thread safety only required for interleaved emission/connection/disconnection
 
@@ -126,6 +127,7 @@ function name as the second.
 Alternative executor schemes can also be specified (see Executor section below 
 for more details).
 ```
+    signal.connectSlot(BSignals::ExecutorScheme::SYNCHRONOUS_DEFERRED, functionName);
     signal.connectSlot(BSignals::ExecutorScheme::ASYNCHRONOUS, functionName);
     signal.connectSlot(BSignals::ExecutorScheme::STRAND, functionName);
     signal.connectSlot(BSignals::ExecutorScheme::THREAD_POOLED, functionName);
@@ -169,6 +171,14 @@ different executor modes.
     - they have short execution time
     - quick emission is required
     - Necessary to know that the function has returned before proceeding
+
+####Deferred Synchronous
+- Emission occurs synchronously.
+- When emit returns, emission has been enqueued for later execution
+- Deferred emissions can be invoked using the invokeDeferred function
+- Preferred for slots when
+    - the time the slots are executed needs to be controlled
+    - there is a designated event processor or event loop (such as a GUI render loop)
 
 ####Asynchronous
 - Emission occurs asynchronously.

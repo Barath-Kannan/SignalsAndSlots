@@ -10,12 +10,11 @@ using BSignals::details::Wheel;
 using BSignals::details::MPSCQueue;
 using BSignals::details::WheeledThreadPool;
 using BSignals::details::BasicTimer;
-using BSignals::details::MPSCQueueVariant;
 
 std::mutex WheeledThreadPool::tpLock;
 bool WheeledThreadPool::isStarted = false;
 std::chrono::duration<double> WheeledThreadPool::maxWait;
-Wheel<MPSCQueueVariant<std::function<void()>>, BSignals::details::WheeledThreadPool::nThreads> WheeledThreadPool::threadPooledFunctions {};
+Wheel<MPSCQueue<std::function<void()>>, WheeledThreadPool::nThreads> WheeledThreadPool::threadPooledFunctions {};
 std::vector<std::thread> WheeledThreadPool::queueMonitors;
 
 WheeledThreadPool::_init WheeledThreadPool::_initializer;

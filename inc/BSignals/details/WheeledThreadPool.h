@@ -12,7 +12,6 @@
 #include <mutex>
 #include "BSignals/details/Wheel.hpp"
 #include "BSignals/details/MPSCQueue.hpp"
-#include "BSignals/details/MPSCQueueVariant.hpp"
 
 #ifndef WHEELEDTHREADPOOL_H
 #define WHEELEDTHREADPOOL_H
@@ -45,7 +44,7 @@ private:
     static std::chrono::duration<double> maxWait;
     static std::mutex tpLock;
     static bool isStarted;
-    static BSignals::details::Wheel<BSignals::details::MPSCQueueVariant<std::function<void()>>, BSignals::details::WheeledThreadPool::nThreads> threadPooledFunctions;
+    static Wheel<MPSCQueue<std::function<void()>>, BSignals::details::WheeledThreadPool::nThreads> threadPooledFunctions;
     static std::vector<std::thread> queueMonitors;
 };
 }}

@@ -20,9 +20,6 @@
 #include <type_traits>
 
 #include "BSignals/details/MPSCQueue.hpp"
-#include "BSignals/details/MPSCQueueVariant.hpp"
-#include "BSignals/details/MPSCQueueSecondaryVariant.hpp"
-#include "BSignals/details/MPMCQueue.hpp"
 #include "BSignals/details/WheeledThreadPool.h"
 #include "BSignals/details/Semaphore.h"
 
@@ -68,9 +65,13 @@ namespace BSignals{ namespace details{
     // unperformant, the overhead of a waiting thread for each slot is 
     // unnecessary, and/or connected functions do NOT need to be processed in
     // order of arrival.
+    
+    // DEFERRED_SYNCHRONOUS:
+    // Emissions are queued up to be manually invoked through the invokeDeferred function
 //  
 enum class ExecutorScheme{
     SYNCHRONOUS,
+    DEFERRED_SYNCHRONOUS,
     ASYNCHRONOUS, 
     STRAND,
     THREAD_POOLED
@@ -146,6 +147,19 @@ public:
         enableEmissionGuard ? emitSignalThreadSafe(p...) : emitSignalUnsafe(p...);
     }
     
+    void invokeDeferred() const{
+        std::pair<std::function<void()>, uint32_t> deferredInvocation;
+        while (deferredQueue.dequeue(deferredInvocation)){
+            if (!enableEmissionGuard || getIsStillConnectedFromExecutor(deferredInvocation.second)){
+                deferredInvocation.first();
+            }
+        }
+    }
+    
+    void operator()(const Args &... p) const{
+        emitSignal(p...);
+    }
+    
 private:
     SignalImpl<Args...>(const SignalImpl<Args...>& that) = delete;
     void operator=(const SignalImpl<Args...>&) = delete;
@@ -178,6 +192,8 @@ private:
     
     inline void invokeRelevantExecutor(const ExecutorScheme &scheme, const uint32_t &id, const std::function<void(Args...)> &slot, const Args &... p) const{
         switch(scheme){
+            case(ExecutorScheme::DEFERRED_SYNCHRONOUS):
+                enqueueDeferred(id, slot, p...);
             case(ExecutorScheme::SYNCHRONOUS):
                 runSynchronous(id, slot, p...);
                 return;
@@ -273,6 +289,10 @@ private:
         function(p...);
     }
     
+    inline void enqueueDeferred(const uint32_t &id, const std::function<void(Args...)> &function, const Args &... p) const{
+        deferredQueue.enqueue({[&function, p...](){function(p...);}, id});
+    }
+    
     //Reference to instance
     template<typename F, typename I>
     std::function<void(Args...)> objectBind(F&& function, I&& instance) const {
@@ -299,7 +319,7 @@ private:
             }
             else{
                 std::this_thread::sleep_for(waitTime);
-                waitTime*=2;
+                    waitTime*=2;
             }
             if (waitTime > maxWait){
                 q.blockingDequeue(func);
@@ -324,8 +344,11 @@ private:
     const bool enableEmissionGuard {false};
     
     //Strand Queues and Threads
-    mutable std::map<uint32_t, MPMCQueue<std::function<void()>>> strandQueues;
+    mutable std::map<uint32_t, MPSCQueue<std::function<void()>>> strandQueues;
     mutable std::map<uint32_t, std::thread> strandThreads;
+    
+    //Deferred invocation queue
+    mutable MPSCQueue<std::pair<std::function<void()>, uint32_t>> deferredQueue;
     
     struct ConnectDescriptor{
         ExecutorScheme scheme;
