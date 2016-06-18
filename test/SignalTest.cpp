@@ -70,6 +70,34 @@ TEST_F(SignalTest, SynchronousSignal) {
     testSignal.disconnectSlot(0);
 }
 
+TEST_F(SignalTest, DeferredSynchronousSignal) {
+    cout << "Instantiating signal object" << endl;
+
+    Signal<int, int> testSignal;
+
+    BasicTimer bt;
+    cout << "Connecting signal" << endl;
+    bt.start();
+    testSignal.connectSlot(ExecutorScheme::DEFERRED_SYNCHRONOUS, staticSumFunction);
+    bt.stop();
+    cout << "Time to connect: " << bt.getElapsedMilliseconds() << "ms" << endl;
+
+    cout << "Emitting signal" << endl;
+
+    bt.start();
+    testSignal(1, 2);
+    bt.stop();
+    cout << "Time to emit: " << bt.getElapsedMilliseconds() << "ms" << endl;
+
+    ASSERT_NE(globalStaticIntX, 3);
+    
+    testSignal.invokeDeferred();
+    
+    ASSERT_EQ(globalStaticIntX, 3);
+
+    testSignal.disconnectSlot(0);
+}
+
 TEST_F(SignalTest, AsynchronousSignal) {
     cout << "Instantiating signal object" << endl;
 
