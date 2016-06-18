@@ -194,6 +194,7 @@ private:
         switch(scheme){
             case(ExecutorScheme::DEFERRED_SYNCHRONOUS):
                 enqueueDeferred(id, slot, p...);
+                return;
             case(ExecutorScheme::SYNCHRONOUS):
                 runSynchronous(id, slot, p...);
                 return;
