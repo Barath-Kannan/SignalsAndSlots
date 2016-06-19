@@ -184,9 +184,9 @@ private:
             strandQueues[id];
             strandThreads.emplace(id, std::thread(&SignalImpl::queueListener, this, id));
         }
-        else if (scheme == ExecutorScheme::THREAD_POOLED){
+        //else if (scheme == ExecutorScheme::THREAD_POOLED){
             WheeledThreadPool::startup();
-        }
+        //}
         return (int)id;
     }
     

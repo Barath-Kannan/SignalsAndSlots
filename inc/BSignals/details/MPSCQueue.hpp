@@ -44,6 +44,7 @@
 #include <chrono>
 #include <thread>
 #include <assert.h>
+#include "ContiguousMPSCQueue.hpp"
 
 namespace BSignals{ namespace details{
 
@@ -51,9 +52,7 @@ template<typename T>
 class MPSCQueue{
 public:
 
-    MPSCQueue() :
-        _head(new listNode),
-        _tail(_head.load(std::memory_order_relaxed)){}
+    MPSCQueue(){}
 
     ~MPSCQueue(){
         T output;
@@ -63,6 +62,11 @@ public:
     }
     
     void enqueue(const T& input){
+        if (_cache.enqueue(input)){
+            std::shared_lock<std::shared_timed_mutex> lock(_mutex);        
+            if (waitingReader) _cv.notify_one();
+            return;
+        }
         listNode* node = new listNode{input};
 
         listNode* prev_head = _head.exchange(node, std::memory_order_acq_rel);
@@ -73,6 +77,7 @@ public:
     }
 
     bool dequeue(T& output){
+        if (_cache.dequeue(output)) return true;
         listNode* tail = _tail.load(std::memory_order_relaxed);
         listNode* next = tail->next.load(std::memory_order_acquire);
         if (next == nullptr) return false;
@@ -97,9 +102,10 @@ private:
         T                           data;
         std::atomic<listNode*> next{nullptr};
     };
-
-    std::atomic<listNode*> _head;
-    std::atomic<listNode*> _tail;
+    ContiguousMPSCQueue<T, 100> _cache;
+    
+    std::atomic<listNode*> _head{new listNode};
+    std::atomic<listNode*> _tail{_head.load(std::memory_order_relaxed)};
     std::shared_timed_mutex _mutex;
     std::condition_variable_any _cv;
     bool waitingReader{false};
