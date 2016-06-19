@@ -229,6 +229,10 @@ thread pool
 - Benchmark emit and connected function completion time against other 
 signals/slots implementations
 - RAII style scoping mechanism for connections
+- More flexible executor specifiers for deferred execution
+- Proper library versioning
+- All asynchronous connections/emissions steal from the thread pool as necessary
+- Implement contiguous MPSC queue, and/or minimize use of new/delete by recycling elements
 
 ##Limitations
 - Requires a C++14 compiler (for shared mutex)
