@@ -30,6 +30,7 @@ struct BigThing {
 SafeQueue<BigThing> sq;
 
 void SignalTest::SetUp() {
+    globalStaticIntX = 0;
 }
 
 void SignalTest::TearDown() {
