@@ -34,7 +34,7 @@ private:
         uint32_t oldValue = currentElement.load();
         uint32_t newValue;
         do {
-            newValue = (oldValue+1)%N;
+            newValue = (oldValue+1 == N) ? 0 : oldValue+1;
         } while (!currentElement.compare_exchange_weak(oldValue, newValue));
         return oldValue;
     }
