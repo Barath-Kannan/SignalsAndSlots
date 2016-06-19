@@ -22,7 +22,7 @@ using std::fixed;
 using BSignals::Signal;
 using BSignals::ExecutorScheme;
 
-int globalStaticIntX = 0;
+std::atomic<int> globalStaticIntX{0};
 
 struct BigThing {
     char thing[512];
@@ -41,7 +41,7 @@ void pushToQueue(BigThing bt) {
 }
 
 void staticSumFunction(int a, int b) {
-    globalStaticIntX = a + b;
+    globalStaticIntX += a + b;
     //cout << a << " + " << b << " = " << globalStaticIntX << endl;
 }
 
@@ -290,6 +290,55 @@ TEST_F(SignalTest, MemberFunction) {
     testSignal2.connectMemberSlot(ExecutorScheme::SYNCHRONOUS, &TestClass::dostuffconst, &tc2);
     testSignal2.emitSignal(1);
     ASSERT_EQ(tc2.getCounter(), 2u);
+}
+
+TEST_F(SignalTest, MultiEmit){
+    cout << "Instantiating signal object" << endl;
+
+    Signal<int, int> testSignal;
+
+    BasicTimer bt;
+    BasicTimer bt2;
+    cout << "Connecting signal" << endl;
+    bt.start();
+    int id = testSignal.connectSlot(ExecutorScheme::STRAND, staticSumFunction);
+    bt.stop();
+    cout << "Time to connect: " << bt.getElapsedMilliseconds() << "ms" << endl;
+
+    cout << "Emitting signal" << endl;
+
+    bt.start();
+    list<thread> threads;
+    std::atomic<uint32_t> threadsRemaining{64};
+    for (uint32_t i=0; i<64; i++){
+        threads.emplace_back([&, i](){
+            for (uint32_t i=0; i<100000; ++i){
+                testSignal.emitSignal(1, 2);
+            }
+            uint32_t tr = threadsRemaining.fetch_sub(1);
+            cout << "Threads remaining: " << tr-1 << endl;
+            cout << "globalStaticInt: " << globalStaticIntX << endl;
+        });
+    }
+    bt.stop();
+    
+    bt2.start();
+    while (bt2.getElapsedSeconds() < 60.0) {
+        if (globalStaticIntX == 100000*3*64) {
+            bt2.stop();
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    //ASSERT_LT(bt2.getElapsedSeconds(), 0.1);
+    cout << "Time to emit: " << bt.getElapsedMilliseconds() << "ms" << endl;
+    cout << "Time to emit and process: " << bt2.getElapsedMilliseconds() << "ms" << endl;
+    cout << "Net time to process: " << bt2.getElapsedMilliseconds() - bt.getElapsedMilliseconds() << "ms" << endl;
+
+    ASSERT_EQ(0, id);
+
+    testSignal.disconnectAllSlots();
+    for (auto &t : threads) t.join();
 }
 
 TEST_P(SignalTestParametrized, IntenseUsage) {

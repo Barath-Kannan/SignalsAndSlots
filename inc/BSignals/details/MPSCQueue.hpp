@@ -44,7 +44,7 @@
 #include <chrono>
 #include <thread>
 #include <assert.h>
-#include "ContiguousMPSCQueue.hpp"
+#include "ContiguousMPMCQueue.hpp"
 
 namespace BSignals{ namespace details{
 
@@ -102,7 +102,7 @@ private:
         T                           data;
         std::atomic<listNode*> next{nullptr};
     };
-    ContiguousMPSCQueue<T, 100> _cache;
+    mpmc_bounded_queue_t<T, 256> _cache;
     
     std::atomic<listNode*> _head{new listNode};
     std::atomic<listNode*> _tail{_head.load(std::memory_order_relaxed)};
