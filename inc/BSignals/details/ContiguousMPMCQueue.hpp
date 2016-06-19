@@ -46,7 +46,7 @@ public:
 
     mpmc_bounded_queue_t(){
         // make sure it's a power of 2
-        //static_assert((N != 0) && ((N & (~N + 1)) == N));
+        static_assert((N != 0) && ((N & (~N + 1)) == N), "size of MPMC queue must be power of 2");
 
         // populate the sequence initial values
         for (size_t i = 0; i < N; ++i) {
