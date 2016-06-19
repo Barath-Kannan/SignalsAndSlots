@@ -25,7 +25,12 @@
 
 // Implementation of Dmitry Vyukov's MPMC algorithm
 // http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
-
+/* 
+ * File:   MPMCQueue.hpp
+ * Author: Barath Kannan
+ * This is an adaptation of https://github.com/mstump/queues/blob/master/include/mpmc-bounded-queue.hpp
+ * Created on 20 June 2016, 1:01 AM
+ */
 
 #ifndef CONTIGUOUSMPMCQUEUE_HPP
 #define CONTIGUOUSMPMCQUEUE_HPP
