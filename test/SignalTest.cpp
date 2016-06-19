@@ -471,9 +471,9 @@ TEST_P(SignalTestParametrized, Correctness) {
     auto func = ([&params, &completedFunctions, &doneFlags](sigType x) {
         volatile sigType v = x;
         for (uint32_t i = 0; i < params.nOperations; i++) {
-            doneFlags[x] = true;
             v+=x;
         }
+        doneFlags[x] = true;
         completedFunctions++;
     });
 
