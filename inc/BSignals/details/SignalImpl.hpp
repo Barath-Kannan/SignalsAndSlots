@@ -246,19 +246,32 @@ private:
         if (getHasWaitingConnectsOrDisconnects()){
             std::unique_lock<std::shared_timed_mutex> bbLock(backBufferLock);
             while (!connectBuffer.empty()){
-                auto it = connectBuffer.begin();
-                connectSlotFunction(it->first, it->second.scheme, it->second.slot);
-                connectBuffer.erase(it);
+                const std::pair<uint32_t, ConnectDescriptor> current = *connectBuffer.begin();
+                connectBuffer.erase(connectBuffer.begin());
+                //if there is another emit attempting to connect from inside a 
+                //synchronous slot function it is going to attempt to push to the
+                //backbuffer while holding a signal shared mutex. This will
+                //cause a deadlock. Hence we need to release the backBufferLock
+                //for the duration of the connect
+                bbLock.unlock();
+                connectSlotFunction(current.first, current.second.scheme, current.second.slot);
+                bbLock.lock();
             }
             while (!disconnectBuffer.empty()){
-                disconnectSlotFunction(*disconnectBuffer.begin());
+                const uint32_t disconnectId = *disconnectBuffer.begin();
                 disconnectBuffer.erase(disconnectBuffer.begin());
+                //Same as above, need to relinquish the lock while we disconnect
+                //to avoid deadlock
+                bbLock.unlock();
+                disconnectSlotFunction(disconnectId);
+                bbLock.lock();
             }
         }
         std::shared_lock<std::shared_timed_mutex> lock(signalLock);
         for (auto const &kvpair : slots){
-            if (!getIsStillConnected(kvpair.first)) continue;
-            invokeRelevantExecutor(kvpair.second.scheme, kvpair.first, kvpair.second.slot, p...);
+            if (getIsStillConnected(kvpair.first)){
+                invokeRelevantExecutor(kvpair.second.scheme, kvpair.first, kvpair.second.slot, p...);
+            }
         }
     }
 
