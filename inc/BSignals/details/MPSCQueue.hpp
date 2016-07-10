@@ -45,6 +45,7 @@
 #include <thread>
 #include <assert.h>
 #include "ContiguousMPMCQueue.hpp"
+#include "ContiguousMPSCQueue.hpp"
 
 namespace BSignals{ namespace details{
 
@@ -62,30 +63,40 @@ public:
     }
     
     void enqueue(const T& input){
+        if (fastEnqueue(input)) return;
+        slowEnqueue(input);
+    }
+    
+    //only try to enqueue to the cache
+    bool fastEnqueue(const T& input){
         if (_cache.enqueue(input)){
             std::shared_lock<std::shared_timed_mutex> lock(_mutex);        
             if (waitingReader) _cv.notify_one();
-            return;
+            return true;
         }
-        listNode* node = new listNode{input};
-
-        listNode* prev_head = _head.exchange(node, std::memory_order_acq_rel);
-        prev_head->next.store(node, std::memory_order_release);
-
-        std::shared_lock<std::shared_timed_mutex> lock(_mutex);        
-        if (waitingReader) _cv.notify_one();
+        return false;
     }
 
     bool dequeue(T& output){
         if (_cache.dequeue(output)) return true;
-        listNode* tail = _tail.load(std::memory_order_relaxed);
-        listNode* next = tail->next.load(std::memory_order_acquire);
-        if (next == nullptr) return false;
-
-        output = next->data;
-        _tail.store(next, std::memory_order_release);
-        delete tail;
-        return true;
+        return slowDequeue(output);
+    }
+    
+    //only try to dequeue from the cache
+    bool fastDequeue(T &output){
+        if (_cache.dequeue(output)) return true;
+        return false;
+    }
+    
+    //transfer as many items as possible to the cache
+    void transferMaxToCache(){
+        T output;
+        while (slowDequeue(output)){
+            if (!fastEnqueue(output)){
+                slowEnqueue(output);
+                break;
+            }
+        }
     }
     
     void blockingDequeue(T& output){
@@ -98,11 +109,32 @@ public:
     }
     
 private:
+    inline bool slowDequeue(T &output){
+        listNode* tail = _tail.load(std::memory_order_relaxed);
+        listNode* next = tail->next.load(std::memory_order_acquire);
+        if (next == nullptr) return false;
+
+        output = next->data;
+        _tail.store(next, std::memory_order_release);
+        delete tail;
+        return true;
+    }
+    
+    inline void slowEnqueue(const T& input){
+        listNode* node = new listNode{input};
+
+        listNode* prev_head = _head.exchange(node, std::memory_order_acq_rel);
+        prev_head->next.store(node, std::memory_order_release);
+
+        std::shared_lock<std::shared_timed_mutex> lock(_mutex);        
+        if (waitingReader) _cv.notify_one();
+    }
+    
     struct listNode{
         T                           data;
         std::atomic<listNode*> next{nullptr};
     };
-    mpmc_bounded_queue_t<T, 256> _cache;
+    ContiguousMPMCQueue<T, 256> _cache;
     
     std::atomic<listNode*> _head{new listNode};
     std::atomic<listNode*> _tail{_head.load(std::memory_order_relaxed)};

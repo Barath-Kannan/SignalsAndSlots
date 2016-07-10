@@ -10,6 +10,7 @@
 #include <functional>
 #include <thread>
 #include <mutex>
+#include <queue>
 #include "BSignals/details/Wheel.hpp"
 #include "BSignals/details/MPSCQueue.hpp"
 

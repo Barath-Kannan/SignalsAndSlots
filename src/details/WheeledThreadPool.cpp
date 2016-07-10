@@ -19,7 +19,7 @@ std::vector<std::thread> WheeledThreadPool::queueMonitors;
 
 WheeledThreadPool::_init WheeledThreadPool::_initializer;
 
-WheeledThreadPool::_init::_init(){
+WheeledThreadPool::_init::_init(){  
     //make a conservative estimate of when blocking will
     //be faster than spinning
     BasicTimer bt;
@@ -65,14 +65,29 @@ void WheeledThreadPool::queueListener(uint32_t index) {
     auto &spoke = threadPooledFunctions.getSpoke(index);
     std::function<void()> func;
     std::chrono::duration<double> waitTime = std::chrono::nanoseconds(1);
+    const uint32_t wrap = threadPooledFunctions.size();
     while (isStarted){
         if (spoke.dequeue(func)){
+            spoke.transferMaxToCache();
             if (func) func();
             waitTime = std::chrono::nanoseconds(1);
         }
         else{
-            std::this_thread::sleep_for(waitTime);
-            waitTime*=2;
+            bool found = false;
+            for (uint32_t i=(index+1)%wrap; i<index; i=(i+1)%wrap){
+                if (threadPooledFunctions.getSpoke(i).fastDequeue(func)){
+                    found = true;
+                    break;
+                }
+            }
+            if (found){
+                if (func) func();
+                waitTime = std::chrono::nanoseconds(1);
+            }
+            else{
+                std::this_thread::sleep_for(waitTime);
+                waitTime*=2;
+            }
         }
         if (waitTime > maxWait){
             spoke.blockingDequeue(func);
