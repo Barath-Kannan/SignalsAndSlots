@@ -26,27 +26,27 @@
 // Implementation of Dmitry Vyukov's MPMC algorithm
 // http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
 /* 
- * File:   ContiguousMPMCQueue.hpp
+ * File:   ContiguousMPSCQueue.hpp
  * Author: Barath Kannan
  * This is an adaptation of https://github.com/mstump/queues/blob/master/include/mpmc-bounded-queue.hpp
  * Created on 20 June 2016, 1:01 AM
  */
 
-#ifndef CONTIGUOUSMPMCQUEUE_HPP
-#define CONTIGUOUSMPMCQUEUE_HPP
+#ifndef CONTIGUOUSMPSCQUEUE_HPP
+#define CONTIGUOUSMPSCQUEUE_HPP
 
 #include <atomic>
 #include <type_traits>
 
 namespace BSignals{ namespace details{
 template<typename T, uint32_t N>
-class ContiguousMPMCQueue
+class ContiguousMPSCQueue
 {
 public:
 
-    ContiguousMPMCQueue(){
+    ContiguousMPSCQueue(){
         // make sure it's a power of 2
-        static_assert((N != 0) && ((N & (~N + 1)) == N), "size of MPMC queue must be power of 2");
+        static_assert((N != 0) && ((N & (~N + 1)) == N), "size of MPSC queue must be power of 2");
 
         // populate the sequence initial values
         for (size_t i = 0; i < N; ++i) {
@@ -55,10 +55,7 @@ public:
     }
 
 
-    bool
-    enqueue(
-        const T& data)
-    {
+    bool enqueue(const T& data){
         // _head_seq only wraps at MAX(_head_seq) instead we use a mask to convert the sequence to an array index
         // this is why the ring buffer must be a size which is a power of 2. this also allows the sequence to double as a ticket/lock.
         size_t  head_seq = _head_seq.load(std::memory_order_relaxed);
@@ -96,42 +93,22 @@ public:
         return false;
     }
 
-    bool
-    dequeue(
-        T& data)
-    {
+    bool dequeue(T& data){
         size_t       tail_seq = _tail_seq.load(std::memory_order_relaxed);
+        node_t*  node     = &_buffer[tail_seq & _mask];
+        size_t   node_seq = node->seq.load(std::memory_order_acquire);
+        intptr_t dif      = (intptr_t) node_seq - (intptr_t)(tail_seq + 1);
 
-        for (;;) {
-            node_t*  node     = &_buffer[tail_seq & _mask];
-            size_t   node_seq = node->seq.load(std::memory_order_acquire);
-            intptr_t dif      = (intptr_t) node_seq - (intptr_t)(tail_seq + 1);
-
-            // if seq and head_seq are the same then it means this slot is empty
-            if (dif == 0) {
-                // claim our spot by moving head
-                // if head isn't the same as we last checked then that means someone beat us to the punch
-                // weak compare is faster, but can return spurious results
-                // which in this instance is OK, because it's in the loop
-                if (_tail_seq.compare_exchange_weak(tail_seq, tail_seq + 1, std::memory_order_relaxed)) {
-                    // set the output
-                    data = node->data;
-                    // set the sequence to what the head sequence should be next time around
-                    node->seq.store(tail_seq + _mask + 1, std::memory_order_release);
-                    return true;
-                }
-            }
-            else if (dif < 0) {
-                // if seq is less than head seq then it means this slot is full and therefore the buffer is full
-                return false;
-            }
-            else {
-                // under normal circumstances this branch should never be taken
-                tail_seq = _tail_seq.load(std::memory_order_relaxed);
+        // if seq and head_seq are the same then it means this slot is empty
+        if (dif == 0) {
+            if (_tail_seq.compare_exchange_strong(tail_seq, tail_seq + 1, std::memory_order_relaxed)) {
+                // set the output
+                data = node->data;
+                // set the sequence to what the head sequence should be next time around
+                node->seq.store(tail_seq + _mask + 1, std::memory_order_release);
+                return true;
             }
         }
-
-        // never taken
         return false;
     }
 
@@ -155,8 +132,8 @@ private:
     std::atomic<size_t> _tail_seq{0};
     cache_line_pad_t    _pad4;
 
-    ContiguousMPMCQueue(const ContiguousMPMCQueue&) {}
-    void operator=(const ContiguousMPMCQueue&) {}
+    ContiguousMPSCQueue(const ContiguousMPSCQueue&) {}
+    void operator=(const ContiguousMPSCQueue&) {}
 };
 }}
 #endif

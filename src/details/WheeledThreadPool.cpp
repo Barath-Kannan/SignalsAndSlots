@@ -1,6 +1,9 @@
 #include "BSignals/details/WheeledThreadPool.h"
 #include "BSignals/details/BasicTimer.h"
 #include <algorithm>
+#include <iostream>
+using std::cout;
+using std::endl;
 
 using std::mutex;
 using std::lock_guard;
@@ -19,7 +22,7 @@ std::vector<std::thread> WheeledThreadPool::queueMonitors;
 
 WheeledThreadPool::_init WheeledThreadPool::_initializer;
 
-WheeledThreadPool::_init::_init(){
+WheeledThreadPool::_init::_init(){  
     //make a conservative estimate of when blocking will
     //be faster than spinning
     BasicTimer bt;
@@ -65,16 +68,34 @@ void WheeledThreadPool::queueListener(uint32_t index) {
     auto &spoke = threadPooledFunctions.getSpoke(index);
     std::function<void()> func;
     std::chrono::duration<double> waitTime = std::chrono::nanoseconds(1);
+    const uint32_t wrap = threadPooledFunctions.size();
     while (isStarted){
         if (spoke.dequeue(func)){
+            //cout << "Running task on spoke: " << index << endl;
+            spoke.transferMaxToCache();
             if (func) func();
             waitTime = std::chrono::nanoseconds(1);
         }
         else{
-            std::this_thread::sleep_for(waitTime);
-            waitTime*=2;
+            bool found = false;
+            for (uint32_t i= (index+1)%wrap; i <index; i=(i+1)%wrap){
+                if (threadPooledFunctions.getSpoke(i).fastDequeue(func)){
+                    //cout << "Running task on spoke: " << index << endl;
+                    found = true;
+                    break;
+                }
+            }
+            if (found){
+                if (func) func();
+                waitTime = std::chrono::nanoseconds(1);
+            }
+            else{
+                std::this_thread::sleep_for(waitTime);
+                waitTime*=2;
+            }
         }
         if (waitTime > maxWait){
+            //cout << "Blocking on spoke: " << index << endl;
             spoke.blockingDequeue(func);
             if (func) func();
             waitTime = std::chrono::nanoseconds(1);

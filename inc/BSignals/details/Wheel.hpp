@@ -25,6 +25,10 @@ public:
         return wheelymajig[index];
     }
     
+    uint32_t getIndex(){
+        return fetchWrapIncrement();
+    }
+    
     const uint32_t size(){
         return N;
     }

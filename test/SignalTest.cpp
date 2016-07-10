@@ -528,7 +528,7 @@ TEST_P(SignalTestParametrized, Correctness) {
 
 TEST_P(SignalTestParametrized, LengthyUsage) {
     auto tupleParams = GetParam();
-    SignalTestParameters params = {::testing::get<0>(tupleParams), ::testing::get<1>(tupleParams), ::testing::get<2>(tupleParams), ::testing::get<3>(tupleParams)};
+    SignalTestParameters params = {::testing::get<0>(tupleParams), ::testing::get<1>(tupleParams), ::testing::get<2>(tupleParams), ::testing::get<3>(tupleParams), ::testing::get<4>(tupleParams)};
     BasicTimer bt, bt2;
 
     cout << "Lengthy usage test for signal type: ";
@@ -556,17 +556,17 @@ TEST_P(SignalTestParametrized, LengthyUsage) {
 
     typedef uint32_t sigType;
     auto func = ([&params, &completedFunctions](sigType x) {
-        std::this_thread::sleep_for(std::chrono::nanoseconds(params.nOperations));
-        completedFunctions++;
+        std::this_thread::sleep_for(std::chrono::nanoseconds(params.nOperations*1000));
+        completedFunctions.fetch_add(1);
     });
 
-    bt.start();
-    for (uint32_t i = 0; i < 100; i++) {
-        func(sigType{i});
-    }
-    bt.stop();
-    completedFunctions -= 100;
-    cout << "Function runtime overhead: " << bt.getElapsedNanoseconds() / 100 << "ns" << endl;
+//    bt.start();
+//    for (uint32_t i = 0; i < 100; i++) {
+//        func(sigType{i});
+//    }
+//    bt.stop();
+//    completedFunctions -= 100;
+//    cout << "Function runtime overhead: " << bt.getElapsedNanoseconds() / 100 << "ns" << endl;
 
     Signal<sigType> signal(params.threadSafe);
     cout << "Connecting " << params.nConnections << " functions" << endl;
