@@ -1,9 +1,6 @@
 #include "BSignals/details/WheeledThreadPool.h"
 #include "BSignals/details/BasicTimer.h"
 #include <algorithm>
-#include <iostream>
-using std::cout;
-using std::endl;
 
 using std::mutex;
 using std::lock_guard;
@@ -71,7 +68,6 @@ void WheeledThreadPool::queueListener(uint32_t index) {
     const uint32_t wrap = threadPooledFunctions.size();
     while (isStarted){
         if (spoke.dequeue(func)){
-            //cout << "Running task on spoke: " << index << endl;
             spoke.transferMaxToCache();
             if (func) func();
             waitTime = std::chrono::nanoseconds(1);
@@ -80,7 +76,6 @@ void WheeledThreadPool::queueListener(uint32_t index) {
             bool found = false;
             for (uint32_t i= (index+1)%wrap; i <index; i=(i+1)%wrap){
                 if (threadPooledFunctions.getSpoke(i).fastDequeue(func)){
-                    //cout << "Running task on spoke: " << index << endl;
                     found = true;
                     break;
                 }
@@ -95,7 +90,6 @@ void WheeledThreadPool::queueListener(uint32_t index) {
             }
         }
         if (waitTime > maxWait){
-            //cout << "Blocking on spoke: " << index << endl;
             spoke.blockingDequeue(func);
             if (func) func();
             waitTime = std::chrono::nanoseconds(1);
