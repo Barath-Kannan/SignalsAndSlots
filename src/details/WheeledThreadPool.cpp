@@ -74,7 +74,7 @@ void WheeledThreadPool::queueListener(uint32_t index) {
         }
         else{
             bool found = false;
-            for (uint32_t i= (index+1)%wrap; i <index; i=(i+1)%wrap){
+            for (uint32_t i=(index+1)%wrap; i<index; i=(i+1)%wrap){
                 if (threadPooledFunctions.getSpoke(i).fastDequeue(func)){
                     found = true;
                     break;
