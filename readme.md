@@ -215,6 +215,7 @@ be in the future
 waiting thread queues
 - The underlying structure is an array of multi-producer single consumer queues,
 with tasks allocated to each queue using round robin scheduling
+- Jobs are stolen from other queues when none are available
 - Preferred for slots when
     - they have long, bounded, or finite execution time
     - the overhead of creating/destroying a thread for each slot would not be performant
@@ -222,8 +223,6 @@ with tasks allocated to each queue using round robin scheduling
     - connected functions do NOT need to be processed in order of arrival
 
 ##To Do
-- Dynamically scaling thread pool (based on business)
-- Weighted round robin in thread pool (based on remaining tasks in each queue)
 - Add executor for signal localised thread pool, as opposed to current global
 thread pool
 - Benchmark emit and connected function completion time against other 
@@ -231,7 +230,6 @@ signals/slots implementations
 - RAII style scoping mechanism for connections
 - More flexible executor specifiers for deferred execution
 - Proper library versioning
-- All asynchronous connections/emissions steal from the thread pool as necessary
 
 ##Limitations
 - Requires a C++14 compiler (for shared mutex)
