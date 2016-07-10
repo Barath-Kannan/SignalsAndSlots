@@ -187,7 +187,6 @@ private:
         }
         else if (scheme == ExecutorScheme::THREAD_POOLED){
             WheeledThreadPool::startup();
-            //TaskQueueProcessor::startup();
         }
         return (int)id;
     }
@@ -278,7 +277,6 @@ private:
     }
 
     inline void runThreadPooled(const uint32_t &id, const std::function<void(Args...)> &function, const Args &... p) const {
-        //TaskQueueProcessor::run([this, &id, &function, p...](){
         WheeledThreadPool::run([this, &id, &function, p...](){
             if (!enableEmissionGuard || getIsStillConnectedFromExecutor(id))
                 function(p...);
