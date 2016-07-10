@@ -21,7 +21,6 @@
 
 #include "BSignals/details/MPSCQueue.hpp"
 #include "BSignals/details/WheeledThreadPool.h"
-#include "BSignals/details/TaskQueueProcessor.hpp"
 #include "BSignals/details/Semaphore.h"
 
 namespace BSignals{ namespace details{
