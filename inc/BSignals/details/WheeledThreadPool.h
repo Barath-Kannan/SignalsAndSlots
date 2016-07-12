@@ -23,11 +23,11 @@ class WheeledThreadPool {
 public:
     
     template <typename... Args>
-    static void run(const std::function<void(Args...)> &task, const Args &... p){
+    static void run(const std::function<void(Args...)> &task, const Args &... p) noexcept{
         run([task, p...](){task(p...);});
     }
     
-    static void run(const std::function<void()> task);
+    static void run(const std::function<void()> task) noexcept;
     
     //only invoke start up if a thread pooled slot has been connected
     static void startup();

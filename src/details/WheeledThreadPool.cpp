@@ -43,7 +43,7 @@ WheeledThreadPool::_init::~_init() {
     }
 }
 
-void WheeledThreadPool::run(const std::function<void()> task) {
+void WheeledThreadPool::run(const std::function<void()> task) noexcept{
     threadPooledFunctions.getSpoke().enqueue(task);
     //threadPooledFunctions.getSpokeRandom().enqueue(task);
 }
