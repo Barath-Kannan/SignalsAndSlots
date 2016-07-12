@@ -675,3 +675,15 @@ INSTANTIATE_TEST_CASE_P(
         Values(ExecutorScheme::SYNCHRONOUS, ExecutorScheme::ASYNCHRONOUS, ExecutorScheme::STRAND, ExecutorScheme::THREAD_POOLED)
         )
         );
+
+INSTANTIATE_TEST_CASE_P(
+        SignalTest_Benchmark_PureEmissionPlus,
+        SignalTestParametrized,
+        testing::Combine(
+        Values(1), //nconnections
+        Values(100000000), //number of emissions
+        Values(1), //number of operations
+        Values(true, false),
+        Values(ExecutorScheme::SYNCHRONOUS, ExecutorScheme::STRAND, ExecutorScheme::THREAD_POOLED) //asynchronous is too slow for this
+        )
+        );
