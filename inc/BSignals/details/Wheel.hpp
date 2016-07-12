@@ -17,33 +17,37 @@ template <class T, uint32_t N>
 class Wheel{
 public:
     
-    T& getSpoke(){
+    T& getSpoke() noexcept{
         return wheelymajig[fetchWrapIncrement()];
     }
     
-    T& getSpoke(uint32_t index){
+    T& getSpokeRandom() noexcept{
+        return wheelymajig[std::rand()%N];
+    }
+    
+    T& getSpoke(uint32_t index) noexcept{
         return wheelymajig[index];
     }
     
-    uint32_t getIndex(){
+    uint32_t getIndex() noexcept{
         return fetchWrapIncrement();
     }
     
-    const uint32_t size(){
+    const uint32_t size() noexcept{
         return N;
     }
 
 private:
-    uint32_t fetchWrapIncrement(){
+    inline uint32_t fetchWrapIncrement() noexcept{
         uint32_t oldValue = currentElement.load();
-        uint32_t newValue;
-        do {
-            newValue = (oldValue+1 == N) ? 0 : oldValue+1;
-        } while (!currentElement.compare_exchange_weak(oldValue, newValue));
+        while (!currentElement.compare_exchange_weak(oldValue, (oldValue+1 == N) ? 0 : oldValue+1));
         return oldValue;
     }
+    char padding0[64];
     std::atomic<uint32_t> currentElement{0};
+    char padding1[64];
     std::array<T, N> wheelymajig;
+    char padding2[64];
 };    
 }}
 
