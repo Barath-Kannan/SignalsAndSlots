@@ -45,6 +45,7 @@ WheeledThreadPool::_init::~_init() {
 
 void WheeledThreadPool::run(const std::function<void()> task) {
     threadPooledFunctions.getSpoke().enqueue(task);
+    //threadPooledFunctions.getSpokeRandom().enqueue(task);
 }
 
 void WheeledThreadPool::startup() {
@@ -66,6 +67,8 @@ void WheeledThreadPool::queueListener(uint32_t index) {
     std::function<void()> func;
     std::chrono::duration<double> waitTime = std::chrono::nanoseconds(1);
     const uint32_t wrap = threadPooledFunctions.size();
+    auto wrapIncrementer = [wrap](uint32_t i){return (i+1 == wrap ? 0 : i+1);};
+    
     while (isStarted){
         if (spoke.dequeue(func)){
             spoke.transferMaxToCache();
@@ -74,7 +77,7 @@ void WheeledThreadPool::queueListener(uint32_t index) {
         }
         else{
             bool found = false;
-            for (uint32_t i=(index+1)%wrap; i<index; i=(i+1)%wrap){
+            for (uint32_t i=wrapIncrementer(index); i<index; i=wrapIncrementer(i)){
                 if (threadPooledFunctions.getSpoke(i).fastDequeue(func)){
                     found = true;
                     break;
