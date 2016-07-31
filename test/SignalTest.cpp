@@ -467,13 +467,13 @@ TEST_P(SignalTestParametrized, Correctness) {
 
     typedef uint32_t sigType;
     
-    std::vector<bool> doneFlags(params.nEmissions, false);
+    std::vector<uint32_t> doneFlags(params.nEmissions, 0);
     auto func = ([&params, &completedFunctions, &doneFlags](sigType x) {
         volatile sigType v = x;
         for (uint32_t i = 0; i < params.nOperations; i++) {
             v+=x;
         }
-        doneFlags[x] = true;
+        doneFlags[x] = 1;
         completedFunctions++;
     });
 
