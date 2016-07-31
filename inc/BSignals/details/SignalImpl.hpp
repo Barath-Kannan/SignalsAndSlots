@@ -82,13 +82,13 @@ class SignalImpl {
 public:
     SignalImpl() = default;
     
-    SignalImpl(bool enforceThreadSafety) 
+    SignalImpl(const bool& enforceThreadSafety) 
         : enableEmissionGuard{enforceThreadSafety} {}
         
-    SignalImpl(uint32_t maxAsyncThreads) 
+    SignalImpl(const uint32_t& maxAsyncThreads) 
         : sem{maxAsyncThreads} {}
         
-    SignalImpl(bool enforceThreadSafety, uint32_t maxAsyncThreads) 
+    SignalImpl(const bool& enforceThreadSafety, const uint32_t& maxAsyncThreads) 
         : enableEmissionGuard{enforceThreadSafety}, sem{maxAsyncThreads} {}
     
     ~SignalImpl(){
@@ -97,7 +97,7 @@ public:
     }
 
     template<typename F, typename C>
-    int connectMemberSlot(const ExecutorScheme &scheme, F&& function, C&& instance) const {
+    int connectMemberSlot(const ExecutorScheme& scheme, F&& function, C&& instance){
         //type check assertions
         static_assert(std::is_member_function_pointer<F>::value, "function is not a member function");
         static_assert(std::is_object<std::remove_reference<C>>::value, "instance is not a class object");
@@ -107,7 +107,7 @@ public:
         return connectSlot(scheme, boundFunc);
     }
     
-    int connectSlot(const ExecutorScheme &scheme, std::function<void(Args...)> slot) const {
+    int connectSlot(const ExecutorScheme& scheme, std::function<void(Args...)> slot){
         uint32_t id = currentId.fetch_add(1);
         if (enableEmissionGuard){
             std::unique_lock<std::shared_timed_mutex> lock(backBufferLock);
@@ -119,7 +119,7 @@ public:
         }
     }
     
-    void disconnectSlot(const int &id) const{
+    void disconnectSlot(const int& id){
         if (enableEmissionGuard){
             std::unique_lock<std::shared_timed_mutex> lock(backBufferLock);
             disconnectBuffer.insert(id);
@@ -129,7 +129,7 @@ public:
         }
     }
     
-    void disconnectAllSlots() const{
+    void disconnectAllSlots(){
         std::unique_lock<std::shared_timed_mutex> lock(signalLock);
         for (auto &q : strandQueues){
             q.second.enqueue(nullptr);
@@ -143,11 +143,11 @@ public:
         slots.clear();
     }
     
-    void emitSignal(const Args &... p) const {
+    void emitSignal(const Args& ... p){
         enableEmissionGuard ? emitSignalThreadSafe(p...) : emitSignalUnsafe(p...);
     }
     
-    void invokeDeferred() const{
+    void invokeDeferred(){
         std::pair<std::function<void()>, uint32_t> deferredInvocation;
         while (deferredQueue.dequeue(deferredInvocation)){
             if (!enableEmissionGuard || getIsStillConnectedFromExecutor(deferredInvocation.second)){
@@ -156,7 +156,7 @@ public:
         }
     }
     
-    void operator()(const Args &... p) const{
+    void operator()(const Args &... p){
         emitSignal(p...);
     }
     
@@ -164,7 +164,7 @@ private:
     SignalImpl<Args...>(const SignalImpl<Args...>& that) = delete;
     void operator=(const SignalImpl<Args...>&) = delete;
     
-    inline void disconnectSlotFunction(const int &id) const{
+    inline void disconnectSlotFunction(const int& id){
         std::unique_lock<std::shared_timed_mutex> lock(signalLock);
         if (!slots.count(id)) return;
         auto &entry = slots[id];
@@ -177,7 +177,7 @@ private:
         slots.erase(id);
     }
     
-    inline int connectSlotFunction(const int &id, const ExecutorScheme &scheme, std::function<void(Args...)> slot) const {
+    inline int connectSlotFunction(const int& id, const ExecutorScheme& scheme, std::function<void(Args...)> slot){
         std::unique_lock<std::shared_timed_mutex> lock(signalLock);
         slots.emplace(id, ConnectDescriptor{scheme, slot});
         if (scheme == ExecutorScheme::STRAND){
@@ -190,7 +190,7 @@ private:
         return (int)id;
     }
     
-    inline void invokeRelevantExecutor(const ExecutorScheme &scheme, const uint32_t &id, const std::function<void(Args...)> &slot, const Args &... p) const{
+    inline void invokeRelevantExecutor(const ExecutorScheme& scheme, const uint32_t& id, const std::function<void(Args...)>& slot, const Args& ... p){
         switch(scheme){
             case(ExecutorScheme::DEFERRED_SYNCHRONOUS):
                 enqueueDeferred(id, slot, p...);
@@ -210,18 +210,18 @@ private:
         }
     }
     
-    inline void emitSignalUnsafe(const Args &... p) const {
+    inline void emitSignalUnsafe(const Args& ... p){
         for (auto const &kvpair : slots){
             invokeRelevantExecutor(kvpair.second.scheme, kvpair.first, kvpair.second.slot, p...);
         }
     }
     
-    inline bool getIsStillConnected(int const &id) const{
+    inline bool getIsStillConnected(const int& id) const{
         std::shared_lock<std::shared_timed_mutex> lock(backBufferLock);
         return (!disconnectBuffer.count(id));
     }
     
-    inline bool getIsStillConnectedFromExecutor(int const &id) const{
+    inline bool getIsStillConnectedFromExecutor(const int& id) const{
         std::shared_lock<std::shared_timed_mutex> lock(backBufferLock);
         std::shared_lock<std::shared_timed_mutex> lockSignal(signalLock);
         return (!disconnectBuffer.count(id) && slots.count(id));
@@ -242,7 +242,7 @@ private:
         return (!connectBuffer.empty() | !disconnectBuffer.empty());
     }
     
-    inline void emitSignalThreadSafe(const Args &... p) const {
+    inline void emitSignalThreadSafe(const Args& ... p){
         if (getHasWaitingConnectsOrDisconnects()){
             std::unique_lock<std::shared_timed_mutex> bbLock(backBufferLock);
             while (!connectBuffer.empty()){
@@ -275,14 +275,14 @@ private:
         }
     }
 
-    inline void runThreadPooled(const uint32_t &id, const std::function<void(Args...)> &function, const Args &... p) const {
+    inline void runThreadPooled(const uint32_t& id, const std::function<void(Args...)> &function, const Args &... p) const {
         WheeledThreadPool::run([this, &id, &function, p...](){
             if (!enableEmissionGuard || getIsStillConnectedFromExecutor(id))
                 function(p...);
         });
     }
     
-    inline void runAsynchronous(const uint32_t &id, const std::function<void(Args...)> &function, const Args &... p) const {
+    inline void runAsynchronous(const uint32_t& id, const std::function<void(Args...)>& function, const Args& ... p){
         sem.acquire();
         std::thread slotThread([this, &id, &function, p...](){
             if (!enableEmissionGuard || getIsStillConnectedFromExecutor(id))
@@ -292,18 +292,18 @@ private:
         slotThread.detach();
     }
     
-    inline void runStrands(const uint32_t &id, const std::function<void(Args...)> &function, const Args &... p) const{
+    inline void runStrands(const uint32_t& id, const std::function<void(Args...)>& function, const Args& ... p){
         //bind the function arguments to the function using a lambda and store
         //the newly bound function. This changes the function signature in the
         //resultant map, there are no longer any parameters in the bound function
         strandQueues[id].enqueue([&function, p...](){function(p...);});
     }
     
-    inline void runSynchronous(const uint32_t &id, const std::function<void(Args...)> &function, const Args &... p) const{
+    inline void runSynchronous(const uint32_t& id, const std::function<void(Args...)>& function, const Args& ... p){
         function(p...);
     }
     
-    inline void enqueueDeferred(const uint32_t &id, const std::function<void(Args...)> &function, const Args &... p) const{
+    inline void enqueueDeferred(const uint32_t& id, const std::function<void(Args...)>& function, const Args& ... p){
         deferredQueue.enqueue({[&function, p...](){function(p...);}, id});
     }
     
@@ -321,7 +321,7 @@ private:
         return objectBind(function, *instance);
     }
         
-    void queueListener(const uint32_t &id) const{
+    void queueListener(const uint32_t& id){
         auto &q = strandQueues[id];
         std::function<void()> func = [](){};
         auto maxWait = WheeledThreadPool::getMaxWait();
@@ -347,22 +347,22 @@ private:
     //Emit acquires shared lock, connect/disconnect acquires unique lock
     mutable std::shared_timed_mutex signalLock;
     
-    //Atomically incremented slotId
-    mutable std::atomic<uint32_t> currentId {0};
-    
     //Async Emit Semaphore
-    mutable Semaphore sem {1024};
+    Semaphore sem {1024};
+    
+    //Atomically incremented slotId
+    std::atomic<uint32_t> currentId {0};
     
     //EmissionGuard determines if it is necessary to guard emission with a shared mutex
     //This is only required if connection/disconnection could be interleaved with emission
     const bool enableEmissionGuard {false};
     
     //Strand Queues and Threads
-    mutable std::map<uint32_t, MPSCQueue<std::function<void()>>> strandQueues;
-    mutable std::map<uint32_t, std::thread> strandThreads;
+    std::map<uint32_t, MPSCQueue<std::function<void()>>> strandQueues;
+    std::map<uint32_t, std::thread> strandThreads;
     
     //Deferred invocation queue
-    mutable MPSCQueue<std::pair<std::function<void()>, uint32_t>> deferredQueue;
+    MPSCQueue<std::pair<std::function<void()>, uint32_t>> deferredQueue;
     
     struct ConnectDescriptor{
         ExecutorScheme scheme;
@@ -370,13 +370,13 @@ private:
     };
     
     //Slot Map
-    mutable std::map<uint32_t, ConnectDescriptor> slots;
+    std::map<uint32_t, ConnectDescriptor> slots;
     
     //Disconnect backbuffer
-    mutable std::set<uint32_t> disconnectBuffer;
+    std::set<uint32_t> disconnectBuffer;
     
     //Connect backbuffer
-    mutable std::map<uint32_t, ConnectDescriptor> connectBuffer;
+    std::map<uint32_t, ConnectDescriptor> connectBuffer;
     
     //Backbuffer lock
     mutable std::shared_timed_mutex backBufferLock;

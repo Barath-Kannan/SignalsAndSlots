@@ -278,7 +278,7 @@ TEST_F(SignalTest, MemberFunction) {
     testSignal.emitSignal(1);
     ASSERT_EQ(tc.getCounter(), 6u);
 
-    const Signal<int> testSignal2;
+    Signal<int> testSignal2;
     testSignal2.connectMemberSlot(ExecutorScheme::SYNCHRONOUS, &TestClass::dostuffconst, tc);
 
     testSignal2.emitSignal(1);
@@ -313,7 +313,7 @@ TEST_F(SignalTest, MultiEmit){
     std::atomic<uint32_t> threadsRemaining{64};
     for (uint32_t i=0; i<64; i++){
         threads.emplace_back([&, i](){
-            for (uint32_t i=0; i<100000; ++i){
+            for (uint32_t i=0; i<1000000; ++i){
                 testSignal.emitSignal(1, 2);
             }
             uint32_t tr = threadsRemaining.fetch_sub(1);
@@ -325,7 +325,7 @@ TEST_F(SignalTest, MultiEmit){
     
     bt2.start();
     while (bt2.getElapsedSeconds() < 60.0) {
-        if (globalStaticIntX == 100000*3*64) {
+        if (globalStaticIntX == 1000000*3*64) {
             bt2.stop();
             break;
         }
