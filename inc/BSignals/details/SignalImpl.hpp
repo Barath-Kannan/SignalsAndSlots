@@ -276,10 +276,18 @@ private:
     }
 
     inline void runThreadPooled(const uint32_t& id, const std::function<void(Args...)> &function, const Args &... p) const {
-        WheeledThreadPool::run([this, &id, &function, p...](){
-            if (!enableEmissionGuard || getIsStillConnectedFromExecutor(id))
+        if (enableEmissionGuard){
+            WheeledThreadPool::run([this, &id, &function, p...](){
+                if (getIsStillConnectedFromExecutor(id)){
+                    function(p...);
+                }
+            });
+        }
+        else{
+            WheeledThreadPool::run([&function, p...](){
                 function(p...);
-        });
+            });
+        }
     }
     
     inline void runAsynchronous(const uint32_t& id, const std::function<void(Args...)>& function, const Args& ... p){
