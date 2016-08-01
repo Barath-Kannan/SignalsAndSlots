@@ -229,7 +229,6 @@ thread pool
 signals/slots implementations
 - RAII style scoping mechanism for connections
 - More flexible executor specifiers for deferred execution
-- Proper library versioning
 
 ##Limitations
 - Requires a C++14 compiler (for shared mutex)

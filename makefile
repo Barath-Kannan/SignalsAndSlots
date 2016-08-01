@@ -59,6 +59,7 @@ HTYPES = h hpp
 ###########################
 
 PROJECT = BSignals
+VERSION = 1.1
 
 #Define Flags
 DEFINE =  LINUX
@@ -139,6 +140,11 @@ PROJECT_CONTAINS_MAIN = 0
 # This saves compilation time, as the makefile will no longer need to
 # search the object files for the main symbol
 EXPLICIT_MAIN_SOURCE =
+
+# 0 = Binary names are generated from the project name and the main source file name(s)
+# 1 = Binary names are generated from the project name only (only valid when there is 1 main source)
+# 2 = Binary source names are generated from the main source file name(s) only
+BINARY_NAMING_CONVENTION = 0
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 #||BUILD SCRIPT||# 
