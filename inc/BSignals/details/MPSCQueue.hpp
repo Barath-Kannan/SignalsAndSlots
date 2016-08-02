@@ -39,7 +39,7 @@
 #define MPSCQUEUE_HPP
 
 #include <atomic>
-#include <shared_mutex>
+#include <mutex>
 #include <condition_variable>
 #include <chrono>
 #include <thread>
@@ -69,9 +69,8 @@ public:
     
     //only try to enqueue to the cache
     bool fastEnqueue(const T& input){
-        if (_cache.enqueue(input)){
-            std::shared_lock<std::shared_timed_mutex> lock(_mutex);        
-            if (waitingReader) _cv.notify_one();
+        if (_cache.enqueue(input)){    
+            _cv.notify_one();
             return true;
         }
         return false;
@@ -100,12 +99,10 @@ public:
     }
     
     void blockingDequeue(T& output){
-        std::unique_lock<std::shared_timed_mutex> lock(_mutex);
-        waitingReader = true;
+        std::unique_lock<std::mutex> lock(_mutex);
         while (!dequeue(output)){
             _cv.wait(lock);
         }
-        waitingReader = false;
     }
     
 private:
@@ -126,8 +123,7 @@ private:
         listNode* prev_head = _head.exchange(node, std::memory_order_acq_rel);
         prev_head->next.store(node, std::memory_order_release);
 
-        std::shared_lock<std::shared_timed_mutex> lock(_mutex);        
-        if (waitingReader) _cv.notify_one();
+        _cv.notify_one();
     }
     
     struct listNode{
@@ -138,9 +134,8 @@ private:
     
     std::atomic<listNode*> _head{new listNode};
     std::atomic<listNode*> _tail{_head.load(std::memory_order_relaxed)};
-    std::shared_timed_mutex _mutex;
-    std::condition_variable_any _cv;
-    bool waitingReader{false};
+    std::mutex _mutex;
+    std::condition_variable _cv;
     
     MPSCQueue(const MPSCQueue&) {}
     void operator=(const MPSCQueue&) {}
