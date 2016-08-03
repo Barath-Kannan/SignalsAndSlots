@@ -1,4 +1,3 @@
-
 /* 
  * File:   Signal.hpp
  * Author: Barath Kannan

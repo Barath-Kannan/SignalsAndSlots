@@ -44,8 +44,7 @@
 #include <chrono>
 #include <thread>
 #include <assert.h>
-#include "ContiguousMPMCQueue.hpp"
-#include "ContiguousMPSCQueue.hpp"
+#include "BSignals/details/ContiguousMPMCQueue.hpp"
 
 namespace BSignals{ namespace details{
 
