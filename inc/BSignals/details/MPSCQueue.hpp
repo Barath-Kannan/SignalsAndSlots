@@ -56,7 +56,7 @@ public:
 
     ~MPSCQueue(){
         T output;
-        while (this->dequeue(output)) {}
+        while(this->dequeue(output));
         listNode* front = _head.load(std::memory_order_relaxed);
         delete front;
     }
@@ -76,14 +76,12 @@ public:
     }
 
     bool dequeue(T& output){
-        if (_cache.dequeue(output)) return true;
-        return slowDequeue(output);
+        return (fastDequeue(output) || slowDequeue(output));
     }
     
     //only try to dequeue from the cache
     bool fastDequeue(T &output){
-        if (_cache.dequeue(output)) return true;
-        return false;
+        return _cache.dequeue(output);
     }
     
     //transfer as many items as possible to the cache

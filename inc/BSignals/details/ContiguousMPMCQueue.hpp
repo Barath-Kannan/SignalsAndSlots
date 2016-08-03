@@ -39,7 +39,7 @@
 #include <type_traits>
 
 namespace BSignals{ namespace details{
-template<typename T, uint32_t N>
+template<typename T, size_t N>
 class ContiguousMPMCQueue
 {
 public:
@@ -64,7 +64,7 @@ public:
         size_t  head_seq = _head_seq.load(std::memory_order_relaxed);
 
         for (;;) {
-            node_t*  node     = &_buffer[head_seq & _mask];
+            node_t*  node     = &_buffer[head_seq & (N-1)];
             size_t   node_seq = node->seq.load(std::memory_order_acquire);
             intptr_t dif      = (intptr_t) node_seq - (intptr_t) head_seq;
 
@@ -103,7 +103,7 @@ public:
         size_t       tail_seq = _tail_seq.load(std::memory_order_relaxed);
 
         for (;;) {
-            node_t*  node     = &_buffer[tail_seq & _mask];
+            node_t*  node     = &_buffer[tail_seq & (N-1)];
             size_t   node_seq = node->seq.load(std::memory_order_acquire);
             intptr_t dif      = (intptr_t) node_seq - (intptr_t)(tail_seq + 1);
 
@@ -117,7 +117,7 @@ public:
                     // set the output
                     data = node->data;
                     // set the sequence to what the head sequence should be next time around
-                    node->seq.store(tail_seq + _mask + 1, std::memory_order_release);
+                    node->seq.store(tail_seq + N, std::memory_order_release);
                     return true;
                 }
             }
@@ -146,8 +146,6 @@ private:
     typedef char cache_line_pad_t[64]; // it's either 32 or 64 so 64 is good enough
 
     cache_line_pad_t    _pad0;
-    const size_t        _pad1{0};
-    const size_t        _mask{N-1};
     std::array<node_t, N> _buffer;
     cache_line_pad_t    _pad2;
     std::atomic<size_t> _head_seq{0};
