@@ -50,7 +50,10 @@ TEST_F(SignalTest, SynchronousSignal) {
     cout << "Instantiating signal object" << endl;
 
     Signal<int, int> testSignal;
-
+    cout << "Size of signal: " << sizeof(testSignal) << endl;
+    BSignals::details::MPSCQueue<std::function<void()>> mpscQ;
+    cout << "Size of MPSCQ: " << sizeof(mpscQ) << endl;
+    
     BasicTimer bt;
     cout << "Connecting signal" << endl;
     bt.start();
