@@ -9,15 +9,14 @@ Semaphore::~Semaphore() {}
 
 void Semaphore::acquire() {
     std::unique_lock<std::mutex> lock(semMutex);
-    while (semCounter == 0){
+    while (semCounter <= 0){
         semCV.wait(lock);
     }
-    semCounter--;
+    --semCounter;
 }
 
 void Semaphore::release() {
-    std::unique_lock<std::mutex> lock(semMutex);
-    semCounter++;
+    ++semCounter;
     semCV.notify_one();
 }
 

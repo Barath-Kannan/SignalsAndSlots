@@ -12,6 +12,7 @@
 #include <thread>
 #include <chrono>
 #include <mutex>
+#include <atomic>
 #include <condition_variable>
 
 template <typename... Args>
@@ -19,16 +20,14 @@ class FunctionTimeRegular {
 public:
     
     template<typename _Rep, typename _Period>
-    FunctionTimeRegular(std::function<bool(Args... p)>&& function, std::chrono::duration<_Rep, _Period>&& interval) 
-    : m_keepGoing(true){
+    FunctionTimeRegular(std::function<bool(Args... p)>&& function, std::chrono::duration<_Rep, _Period>&& interval){
         m_tfunc = function;
         m_interval = std::chrono::duration<double>(interval);
         mainThread = std::thread(&FunctionTimeRegular::threadLoop, this);
     }
     
     template<typename F, typename I, typename _Rep, typename _Period>
-    FunctionTimeRegular(F&& function, I&& instance, std::chrono::duration<_Rep, _Period>&& interval) 
-    : m_keepGoing(true){
+    FunctionTimeRegular(F&& function, I&& instance, std::chrono::duration<_Rep, _Period>&& interval){
         m_tfunc = std::function<bool(Args...)>(objectBind(function, instance));
         m_interval = std::chrono::duration<double>(interval);
         mainThread = std::thread(&FunctionTimeRegular::threadLoop, this);
@@ -45,7 +44,6 @@ public:
     }
     
     void stop(){
-        std::lock_guard<std::mutex> lock(m_mutex);
         m_keepGoing=false;
         m_cv.notify_one();
     }
@@ -82,7 +80,7 @@ private:
         }
     }
     
-    mutable bool m_keepGoing;
+    mutable std::atomic<bool> m_keepGoing{true};
     mutable std::mutex m_mutex;
     mutable std::condition_variable m_cv;
     mutable std::thread mainThread;

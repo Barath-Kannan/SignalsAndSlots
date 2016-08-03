@@ -70,7 +70,7 @@ public:
     //only try to enqueue to the cache
     bool fastEnqueue(const T& input){
         if (_cache.enqueue(input)){    
-            _cv.notify_one();
+            if (waitingReader.load(std::memory_order_acquire)) _cv.notify_one();
             return true;
         }
         return false;
@@ -100,9 +100,11 @@ public:
     
     void blockingDequeue(T& output){
         std::unique_lock<std::mutex> lock(_mutex);
+        waitingReader.store(true, std::memory_order_release);
         while (!dequeue(output)){
             _cv.wait(lock);
         }
+        waitingReader.store(false, std::memory_order_release);
     }
     
 private:
@@ -123,7 +125,7 @@ private:
         listNode* prev_head = _head.exchange(node, std::memory_order_acq_rel);
         prev_head->next.store(node, std::memory_order_release);
 
-        _cv.notify_one();
+        if (waitingReader.load(std::memory_order_acquire)) _cv.notify_one();
     }
     
     struct listNode{
@@ -136,6 +138,7 @@ private:
     std::atomic<listNode*> _tail{_head.load(std::memory_order_relaxed)};
     std::mutex _mutex;
     std::condition_variable _cv;
+    std::atomic<bool> waitingReader{false};
     
     MPSCQueue(const MPSCQueue&) {}
     void operator=(const MPSCQueue&) {}

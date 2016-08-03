@@ -29,8 +29,9 @@ public:
     }
     
     void enqueue(const T &t){
-        std::lock_guard<std::mutex> lock(m);
+        std::unique_lock<std::mutex> lock(m);
         q.push(t);
+        lock.unlock();
         c.notify_one();
     }
     
@@ -102,7 +103,6 @@ public:
     }
     
     void wakeWaiters(){
-        std::unique_lock<std::mutex> lock(m);
         c.notify_all();
     }
     
@@ -126,8 +126,6 @@ public:
     void stop(){
         terminateFlag = true;
         wakeWaiters();
-        std::unique_lock<std::mutex> lock(m);
-        c.notify_all();
     }
     
     bool isStopped(){

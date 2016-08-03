@@ -25,7 +25,7 @@ public:
 private:
     std::mutex semMutex;
     std::condition_variable semCV;
-    uint32_t semCounter;
+    std::atomic<uint32_t> semCounter;
     const uint32_t initial;
 };
 }}
