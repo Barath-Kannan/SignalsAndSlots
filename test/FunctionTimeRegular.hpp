@@ -5,8 +5,8 @@
  * Created on May 6, 2016, 2:39 PM
  */
 
-#ifndef FUNCTIONTIMEREGULAR_HPP
-#define FUNCTIONTIMEREGULAR_HPP
+#ifndef BSIGNALS_FUNCTIONTIMEREGULAR_HPP
+#define BSIGNALS_FUNCTIONTIMEREGULAR_HPP
 
 #include <functional>
 #include <thread>
@@ -88,5 +88,5 @@ private:
     mutable std::function<bool(Args...)> m_tfunc;
 };
 
-#endif /* FUNCTIONTIMEREGULAR_HPP */
+#endif /* BSIGNALS_FUNCTIONTIMEREGULAR_HPP */
 

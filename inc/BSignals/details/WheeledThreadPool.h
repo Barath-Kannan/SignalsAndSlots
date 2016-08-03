@@ -14,8 +14,8 @@
 #include "BSignals/details/Wheel.hpp"
 #include "BSignals/details/MPSCQueue.hpp"
 
-#ifndef WHEELEDTHREADPOOL_H
-#define WHEELEDTHREADPOOL_H
+#ifndef BSIGNALS_WHEELEDTHREADPOOL_H
+#define BSIGNALS_WHEELEDTHREADPOOL_H
 
 namespace BSignals{ namespace details{
 
@@ -50,4 +50,4 @@ private:
 };
 }}
 
-#endif /* WHEELEDTHREADPOOL_H */
+#endif /* BSIGNALS_WHEELEDTHREADPOOL_H */

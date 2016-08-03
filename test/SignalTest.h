@@ -5,8 +5,8 @@
  * Created on May 10, 2016, 2:59 PM
  */
 
-#ifndef SIGNALTEST_H
-#define SIGNALTEST_H
+#ifndef BSIGNALS_SIGNALTEST_H
+#define BSIGNALS_SIGNALTEST_H
 
 #include <gtest/gtest.h>
 #include "BSignals/Signal.hpp"
@@ -30,4 +30,4 @@ class SignalTestParametrized : public SignalTest,
         public testing::WithParamInterface< ::testing::tuple<uint32_t, uint32_t, uint32_t, bool, BSignals::ExecutorScheme> >{
 };
 
-#endif /* SIGNALTEST_H */
+#endif /* BSIGNALS_SIGNALTEST_H */

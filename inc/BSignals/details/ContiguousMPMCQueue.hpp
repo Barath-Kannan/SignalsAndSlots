@@ -32,8 +32,8 @@
  * Created on 20 June 2016, 1:01 AM
  */
 
-#ifndef CONTIGUOUSMPMCQUEUE_HPP
-#define CONTIGUOUSMPMCQUEUE_HPP
+#ifndef BSIGNALS_CONTIGUOUSMPMCQUEUE_HPP
+#define BSIGNALS_CONTIGUOUSMPMCQUEUE_HPP
 
 #include <atomic>
 #include <type_traits>

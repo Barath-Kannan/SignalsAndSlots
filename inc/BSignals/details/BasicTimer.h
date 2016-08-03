@@ -5,8 +5,8 @@
  * Created on April 21, 2016, 12:09 PM
  */
 
-#ifndef BASICTIMER_H
-#define BASICTIMER_H
+#ifndef BSIGNALS_BASICTIMER_H
+#define BSIGNALS_BASICTIMER_H
 
 #include <chrono>
 
@@ -30,5 +30,4 @@ protected:
     bool running;
 };
 }}
-#endif /* BASICTIMER_H */
-
+#endif /* BSIGNALS_BASICTIMER_H */

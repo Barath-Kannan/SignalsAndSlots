@@ -5,8 +5,8 @@
  * Created on 13 June 2016, 12:50 AM
  */
 
-#ifndef WHEEL_HPP
-#define WHEEL_HPP
+#ifndef BSIGNALS_WHEEL_HPP
+#define BSIGNALS_WHEEL_HPP
 
 #include <atomic>
 
@@ -51,5 +51,5 @@ private:
 };    
 }}
 
-#endif /* WHEEL_HPP */
+#endif /* BSIGNALS_WHEEL_HPP */
 

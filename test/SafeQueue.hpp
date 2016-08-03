@@ -5,8 +5,8 @@
  * Created on April 21, 2016, 10:28 PM
  */
 
-#ifndef SAFEQUEUE_HPP
-#define SAFEQUEUE_HPP
+#ifndef BSIGNALS_SAFEQUEUE_HPP
+#define BSIGNALS_SAFEQUEUE_HPP
 
 #include <queue>
 #include <mutex>
@@ -150,5 +150,5 @@ private:
     std::condition_variable c;
 };
 }}
-#endif /* SAFEQUEUE_HPP */
+#endif /* BSIGNALS_SAFEQUEUE_HPP */
 

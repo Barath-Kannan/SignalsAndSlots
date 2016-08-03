@@ -5,8 +5,8 @@
  * Created on 14 June 2016, 9:12 PM
  */
 
-#ifndef SIGNAL_HPP
-#define SIGNAL_HPP
+#ifndef BSIGNALS_SIGNAL_HPP
+#define BSIGNALS_SIGNAL_HPP
 
 #include "BSignals/details/SignalImpl.hpp"
 
@@ -74,4 +74,4 @@ private:
 
 } /* namespace BSignals */
 
-#endif /* SIGNAL_HPP */
+#endif /* BSIGNALS_SIGNAL_HPP */

@@ -5,8 +5,8 @@
  * Created on 30 May 2016, 6:49 PM
  */
 
-#ifndef SEMAPHORE_H
-#define SEMAPHORE_H
+#ifndef BSIGNALS_SEMAPHORE_H
+#define BSIGNALS_SEMAPHORE_H
 
 #include <atomic>
 #include <mutex>
@@ -29,5 +29,5 @@ private:
     const uint32_t initial;
 };
 }}
-#endif /* SEMAPHORE_H */
+#endif /* BSIGNALS_SEMAPHORE_H */
 

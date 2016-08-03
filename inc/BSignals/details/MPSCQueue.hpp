@@ -35,8 +35,8 @@
  */
 
 
-#ifndef MPSCQUEUE_HPP
-#define MPSCQUEUE_HPP
+#ifndef BSIGNALS_MPSCQUEUE_HPP
+#define BSIGNALS_MPSCQUEUE_HPP
 
 #include <atomic>
 #include <mutex>

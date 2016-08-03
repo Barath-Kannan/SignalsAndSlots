@@ -5,8 +5,8 @@
  * Created on May 10, 2016, 5:57 PM
  */
 
-#ifndef SIGNALIMPL_HPP
-#define SIGNALIMPL_HPP
+#ifndef BSIGNALS_SIGNALIMPL_HPP
+#define BSIGNALS_SIGNALIMPL_HPP
 
 #include <functional>
 #include <map>
@@ -392,4 +392,4 @@ private:
 
 }}
 
-#endif /* SIGNALIMPL_HPP */
+#endif /* BSIGNALS_SIGNALIMPL_HPP */
