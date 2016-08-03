@@ -49,60 +49,37 @@ public:
         static_assert((N != 0) && ((N & (~N + 1)) == N), "size of MPMC queue must be power of 2");
 
         // populate the sequence initial values
-        for (size_t i = 0; i < N; ++i) {
+        for (size_t i=0; i<N; ++i){
             _buffer[i].seq.store(i, std::memory_order_relaxed);
         }
     }
 
-
-    bool
-    enqueue(
-        const T& data)
-    {
-        // _head_seq only wraps at MAX(_head_seq) instead we use a mask to convert the sequence to an array index
-        // this is why the ring buffer must be a size which is a power of 2. this also allows the sequence to double as a ticket/lock.
+    bool enqueue(const T& data){
         size_t  head_seq = _head_seq.load(std::memory_order_relaxed);
-
-        for (;;) {
+        while(true){
             node_t*  node     = &_buffer[head_seq & (N-1)];
             size_t   node_seq = node->seq.load(std::memory_order_acquire);
             intptr_t dif      = (intptr_t) node_seq - (intptr_t) head_seq;
 
-            // if seq and head_seq are the same then it means this slot is empty
-            if (dif == 0) {
-                // claim our spot by moving head
-                // if head isn't the same as we last checked then that means someone beat us to the punch
-                // weak compare is faster, but can return spurious results
-                // which in this instance is OK, because it's in the loop
+            if (dif == 0){
                 if (_head_seq.compare_exchange_weak(head_seq, head_seq + 1, std::memory_order_relaxed)) {
-                    // set the data
                     node->data = data;
-                    // increment the sequence so that the tail knows it's accessible
                     node->seq.store(head_seq + 1, std::memory_order_release);
                     return true;
                 }
             }
-            else if (dif < 0) {
-                // if seq is less than head seq then it means this slot is full and therefore the buffer is full
+            else if (dif < 0){
                 return false;
             }
-            else {
-                // under normal circumstances this branch should never be taken
+            else{
                 head_seq = _head_seq.load(std::memory_order_relaxed);
             }
         }
-
-        // never taken
-        return false;
     }
 
-    bool
-    dequeue(
-        T& data)
-    {
+    bool dequeue(T& data){
         size_t       tail_seq = _tail_seq.load(std::memory_order_relaxed);
-
-        for (;;) {
+        while(true){
             node_t*  node     = &_buffer[tail_seq & (N-1)];
             size_t   node_seq = node->seq.load(std::memory_order_acquire);
             intptr_t dif      = (intptr_t) node_seq - (intptr_t)(tail_seq + 1);
@@ -121,18 +98,15 @@ public:
                     return true;
                 }
             }
-            else if (dif < 0) {
+            else if (dif < 0){
                 // if seq is less than head seq then it means this slot is full and therefore the buffer is full
                 return false;
             }
-            else {
+            else{
                 // under normal circumstances this branch should never be taken
                 tail_seq = _tail_seq.load(std::memory_order_relaxed);
             }
         }
-
-        // never taken
-        return false;
     }
 
 private:
