@@ -45,10 +45,7 @@ class ContiguousMPMCQueue
 public:
 
     ContiguousMPMCQueue(){
-        // make sure it's a power of 2
         static_assert((N != 0) && ((N & (~N + 1)) == N), "size of MPMC queue must be power of 2");
-
-        // populate the sequence initial values
         for (size_t i=0; i<N; ++i){
             _buffer[i].seq.store(i, std::memory_order_relaxed);
         }
@@ -83,27 +80,17 @@ public:
             node_t*  node     = &_buffer[tail_seq & (N-1)];
             size_t   node_seq = node->seq.load(std::memory_order_acquire);
             intptr_t dif      = (intptr_t) node_seq - (intptr_t)(tail_seq + 1);
-
-            // if seq and head_seq are the same then it means this slot is empty
             if (dif == 0) {
-                // claim our spot by moving head
-                // if head isn't the same as we last checked then that means someone beat us to the punch
-                // weak compare is faster, but can return spurious results
-                // which in this instance is OK, because it's in the loop
                 if (_tail_seq.compare_exchange_weak(tail_seq, tail_seq + 1, std::memory_order_relaxed)) {
-                    // set the output
                     data = node->data;
-                    // set the sequence to what the head sequence should be next time around
                     node->seq.store(tail_seq + N, std::memory_order_release);
                     return true;
                 }
             }
             else if (dif < 0){
-                // if seq is less than head seq then it means this slot is full and therefore the buffer is full
                 return false;
             }
             else{
-                // under normal circumstances this branch should never be taken
                 tail_seq = _tail_seq.load(std::memory_order_relaxed);
             }
         }
@@ -111,22 +98,17 @@ public:
 
 private:
 
-    struct node_t
-    {
+    struct node_t{
         T                     data;
         std::atomic<size_t>   seq;
     };
 
-    typedef char cache_line_pad_t[64]; // it's either 32 or 64 so 64 is good enough
-
-    cache_line_pad_t    _pad0;
     std::array<node_t, N> _buffer;
-    cache_line_pad_t    _pad2;
+    char pad0[64];
     std::atomic<size_t> _head_seq{0};
-    cache_line_pad_t    _pad3;
+    char pad1[64];
     std::atomic<size_t> _tail_seq{0};
-    cache_line_pad_t    _pad4;
-
+    
     ContiguousMPMCQueue(const ContiguousMPMCQueue&) {}
     void operator=(const ContiguousMPMCQueue&) {}
 };
