@@ -129,8 +129,8 @@ private:
         T                           data;
         std::atomic<listNode*> next{nullptr};
     };
-    ContiguousMPMCQueue<T, 256> _cache;
     
+    ContiguousMPMCQueue<T, 16> _cache;
     std::atomic<listNode*> _head{new listNode};
     std::atomic<listNode*> _tail{_head.load(std::memory_order_relaxed)};
     std::mutex _mutex;
