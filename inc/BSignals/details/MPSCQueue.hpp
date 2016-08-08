@@ -48,7 +48,7 @@
 
 namespace BSignals{ namespace details{
 
-template<typename T>
+template<typename T, size_t CACHE_SIZE=16>
 class MPSCQueue{
 public:
 
@@ -130,7 +130,7 @@ private:
         std::atomic<listNode*> next{nullptr};
     };
     
-    ContiguousMPMCQueue<T, 16> _cache;
+    ContiguousMPMCQueue<T, CACHE_SIZE> _cache;
     std::atomic<listNode*> _head{new listNode};
     std::atomic<listNode*> _tail{_head.load(std::memory_order_relaxed)};
     std::mutex _mutex;

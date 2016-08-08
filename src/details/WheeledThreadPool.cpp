@@ -14,7 +14,7 @@ using BSignals::details::BasicTimer;
 std::mutex WheeledThreadPool::tpLock;
 bool WheeledThreadPool::isStarted = false;
 std::chrono::duration<double> WheeledThreadPool::maxWait;
-Wheel<MPSCQueue<std::function<void()>>, WheeledThreadPool::nThreads> WheeledThreadPool::threadPooledFunctions {};
+Wheel<MPSCQueue<std::function<void()>, 256>, WheeledThreadPool::nThreads> WheeledThreadPool::threadPooledFunctions {};
 std::vector<std::thread> WheeledThreadPool::queueMonitors;
 
 WheeledThreadPool::_init WheeledThreadPool::_initializer;
