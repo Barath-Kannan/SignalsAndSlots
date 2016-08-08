@@ -98,7 +98,7 @@ public:
     
     void invokeDeferred(){
         std::pair<std::function<void()>, uint32_t> deferredInvocation;
-        while (deferredQueue.dequeue(deferredInvocation)){
+        while (deferredQueue->dequeue(deferredInvocation)){
             if (!enableEmissionGuard || getIsStillConnectedFromExecutor(deferredInvocation.second)){
                 deferredInvocation.first();
             }
@@ -135,6 +135,11 @@ private:
         }
         else if (scheme == BSignals::ExecutorScheme::THREAD_POOLED){
             WheeledThreadPool::startup();
+        }
+        else if (scheme == BSignals::ExecutorScheme::DEFERRED_SYNCHRONOUS){
+            if (!deferredQueue){
+                deferredQueue = std::make_unique<MPSCQueue<std::pair<std::function<void()>, uint32_t>>>();
+            }
         }
         return (int)id;
     }
@@ -261,7 +266,7 @@ private:
     }
     
     inline void enqueueDeferred(const uint32_t& id, const std::function<void(Args...)>& function, const Args& ... p){
-        deferredQueue.enqueue({[&function, p...](){function(p...);}, id});
+        deferredQueue->enqueue({[&function, p...](){function(p...);}, id});
     }
     
     //Reference to instance
@@ -319,7 +324,8 @@ private:
     std::map<uint32_t, std::thread> strandThreads;
     
     //Deferred invocation queue
-    MPSCQueue<std::pair<std::function<void()>, uint32_t>> deferredQueue;
+    //Use unique pointer so that full MPSC queue overhead is only required if there is a deferred slot
+    std::unique_ptr<MPSCQueue<std::pair<std::function<void()>, uint32_t>>> deferredQueue{nullptr};
     
     struct ConnectDescriptor{
         ExecutorScheme scheme;
