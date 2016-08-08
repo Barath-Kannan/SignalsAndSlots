@@ -8,17 +8,10 @@
 #ifndef BSIGNALS_SIGNAL_HPP
 #define BSIGNALS_SIGNAL_HPP
 
+#include "BSignals/ExecutorScheme.h"
 #include "BSignals/details/SignalImpl.hpp"
 
 namespace BSignals {
-
-enum class ExecutorScheme {
-    SYNCHRONOUS,
-    DEFERRED_SYNCHRONOUS,
-    ASYNCHRONOUS,
-    STRAND,
-    THREAD_POOLED
-};
 
 template <typename... Args>
 class Signal {
@@ -34,16 +27,15 @@ public:
     Signal(const bool& enforceThreadSafety, const uint32_t& maxAsyncThreads)
     : signalImpl(enforceThreadSafety, maxAsyncThreads) {}
 
-    ~Signal() {
-    }
+    ~Signal() {}
 
     template<typename F, typename C>
     int connectMemberSlot(const ExecutorScheme& scheme, F&& function, C&& instance) {
-        return signalImpl.connectMemberSlot((BSignals::details::ExecutorScheme)scheme, std::forward<F>(function), std::forward<C>(instance));
+        return signalImpl.connectMemberSlot(scheme, std::forward<F>(function), std::forward<C>(instance));
     }
 
     int connectSlot(const ExecutorScheme& scheme, std::function<void(Args...) > slot) {
-        return signalImpl.connectSlot((BSignals::details::ExecutorScheme)scheme, slot);
+        return signalImpl.connectSlot(scheme, slot);
     }
 
     void disconnectSlot(const uint32_t& id) {

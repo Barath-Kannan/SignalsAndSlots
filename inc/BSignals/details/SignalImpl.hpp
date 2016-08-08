@@ -19,64 +19,13 @@
 #include <utility>
 #include <type_traits>
 
+#include "BSignals/ExecutorScheme.h"
 #include "BSignals/details/MPSCQueue.hpp"
 #include "BSignals/details/WheeledThreadPool.h"
 #include "BSignals/details/Semaphore.h"
 
 namespace BSignals{ namespace details{
 
-//These executors determine how message emission to a slot occurs
-    // SYNCHRONOUS:
-    // Emission occurs synchronously.
-    // When emit returns, all connected slots have been invoked and returned.
-    // This method is preferred when connected functions have short execution
-    // time, quick emission is required, and/or when it is necessary to know 
-    // that the function has returned before proceeding.
-
-    // ASYNCHRONOUS:
-    // Emission occurs asynchronously. A detached thread is spawned on emission.
-    // When emit returns, the thread has been spawned. The thread automatically
-    // destructs when the connected function returns.
-    // This method is recommended when connected functions have long execution
-    // time and are independent.
-
-    // STRAND:
-    // Emission occurs asynchronously. 
-    // On connection a dedicated thread (per slot) is spawned to wait for new messages.
-    // Emitted parameters are bound to the mapped function and enqueued on the 
-    // waiting thread. These messages are then processed synchronously in the
-    // spawned thread.
-    // This method is recommended when connected functions have longer execution
-    // time, the overhead of creating/destroying a thread for each slot would be
-    // unperformant, and/or connected functions need to be processed in order 
-    // of arrival (FIFO).
-
-    // THREAD POOLED:
-    // Emission occurs asynchronously. 
-    // On connection, if it is the first thread pooled function by any signal, 
-    // the thread pool is initialized with 8 threads, all listening for queued
-    // emissions. The number of threads in the pool is not currently run-time
-    // configurable but may be in the future.
-    // Emitted parameters are bound to the mapped function and enqueued on the 
-    // one of the waiting threads. These messages are then processed when the 
-    // relevant queue is consumed by the mapped thread pool.
-    // This method is recommended when connected functions have longer execution
-    // time, the overhead of creating/destroying a thread for each slot would be
-    // unperformant, the overhead of a waiting thread for each slot is 
-    // unnecessary, and/or connected functions do NOT need to be processed in
-    // order of arrival.
-    
-    // DEFERRED_SYNCHRONOUS:
-    // Emissions are queued up to be manually invoked through the invokeDeferred function
-//  
-enum class ExecutorScheme{
-    SYNCHRONOUS,
-    DEFERRED_SYNCHRONOUS,
-    ASYNCHRONOUS, 
-    STRAND,
-    THREAD_POOLED
-};
-    
 template <typename... Args>
 class SignalImpl {
 public:
@@ -97,7 +46,7 @@ public:
     }
 
     template<typename F, typename C>
-    int connectMemberSlot(const ExecutorScheme& scheme, F&& function, C&& instance){
+    int connectMemberSlot(const BSignals::ExecutorScheme& scheme, F&& function, C&& instance){
         //type check assertions
         static_assert(std::is_member_function_pointer<F>::value, "function is not a member function");
         static_assert(std::is_object<std::remove_reference<C>>::value, "instance is not a class object");
@@ -107,7 +56,7 @@ public:
         return connectSlot(scheme, boundFunc);
     }
     
-    int connectSlot(const ExecutorScheme& scheme, std::function<void(Args...)> slot){
+    int connectSlot(const BSignals::ExecutorScheme& scheme, std::function<void(Args...)> slot){
         uint32_t id = currentId.fetch_add(1);
         if (enableEmissionGuard){
             std::unique_lock<std::shared_timed_mutex> lock(backBufferLock);
@@ -168,7 +117,7 @@ private:
         std::unique_lock<std::shared_timed_mutex> lock(signalLock);
         if (!slots.count(id)) return;
         auto &entry = slots[id];
-        if (entry.scheme == ExecutorScheme::STRAND){
+        if (entry.scheme == BSignals::ExecutorScheme::STRAND){
             strandQueues[id].enqueue(nullptr);
             strandThreads[id].join();
             strandThreads.erase(id);
@@ -177,34 +126,34 @@ private:
         slots.erase(id);
     }
     
-    inline int connectSlotFunction(const int& id, const ExecutorScheme& scheme, std::function<void(Args...)> slot){
+    inline int connectSlotFunction(const int& id, const BSignals::ExecutorScheme& scheme, std::function<void(Args...)> slot){
         std::unique_lock<std::shared_timed_mutex> lock(signalLock);
         slots.emplace(id, ConnectDescriptor{scheme, slot});
-        if (scheme == ExecutorScheme::STRAND){
+        if (scheme == BSignals::ExecutorScheme::STRAND){
             strandQueues[id];
             strandThreads.emplace(id, std::thread(&SignalImpl::queueListener, this, id));
         }
-        else if (scheme == ExecutorScheme::THREAD_POOLED){
+        else if (scheme == BSignals::ExecutorScheme::THREAD_POOLED){
             WheeledThreadPool::startup();
         }
         return (int)id;
     }
     
-    inline void invokeRelevantExecutor(const ExecutorScheme& scheme, const uint32_t& id, const std::function<void(Args...)>& slot, const Args& ... p){
+    inline void invokeRelevantExecutor(const BSignals::ExecutorScheme& scheme, const uint32_t& id, const std::function<void(Args...)>& slot, const Args& ... p){
         switch(scheme){
-            case(ExecutorScheme::DEFERRED_SYNCHRONOUS):
+            case(BSignals::ExecutorScheme::DEFERRED_SYNCHRONOUS):
                 enqueueDeferred(id, slot, p...);
                 return;
-            case(ExecutorScheme::SYNCHRONOUS):
+            case(BSignals::ExecutorScheme::SYNCHRONOUS):
                 runSynchronous(id, slot, p...);
                 return;
-            case(ExecutorScheme::ASYNCHRONOUS):
+            case(BSignals::ExecutorScheme::ASYNCHRONOUS):
                 runAsynchronous(id, slot, p...);
                 return;
-            case(ExecutorScheme::STRAND):
+            case(BSignals::ExecutorScheme::STRAND):
                 runStrands(id, slot, p...);
                 return;
-            case(ExecutorScheme::THREAD_POOLED):
+            case(BSignals::ExecutorScheme::THREAD_POOLED):
                 runThreadPooled(id, slot, p...);
                 return;
         }
