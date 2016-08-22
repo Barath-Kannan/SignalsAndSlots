@@ -1,7 +1,7 @@
 /*
  * File:   SignalImpl.hpp
  * Author: Barath Kannan
- * Signal/Slots C++14 implementation
+ * Signal/Slots C++11 implementation
  * Created on May 10, 2016, 5:57 PM
  */
 
@@ -13,7 +13,6 @@
 #include <unordered_map>
 #include <atomic>
 #include <mutex>
-#include <shared_mutex>
 #include <condition_variable>
 #include <thread>
 #include <utility>
@@ -23,6 +22,7 @@
 #include "BSignals/details/MPSCQueue.hpp"
 #include "BSignals/details/WheeledThreadPool.h"
 #include "BSignals/details/Semaphore.h"
+#include "BSignals/details/SharedMutex.h"
 
 namespace BSignals{ namespace details{
 
@@ -59,8 +59,9 @@ public:
     int connectSlot(const BSignals::ExecutorScheme& scheme, std::function<void(Args...)> slot){
         uint32_t id = currentId.fetch_add(1);
         if (enableEmissionGuard){
-            std::unique_lock<std::shared_timed_mutex> lock(backBufferLock);
+            backBufferLock.lock();
             connectBuffer.emplace(id, ConnectDescriptor{scheme, slot});
+            backBufferLock.unlock();
             return id;
         }
         else{
@@ -70,8 +71,9 @@ public:
     
     void disconnectSlot(const int& id){
         if (enableEmissionGuard){
-            std::unique_lock<std::shared_timed_mutex> lock(backBufferLock);
+            backBufferLock.lock();
             disconnectBuffer.insert(id);
+            backBufferLock.unlock();
         }
         else{
             disconnectSlotFunction(id);
@@ -79,7 +81,7 @@ public:
     }
     
     void disconnectAllSlots(){
-        std::unique_lock<std::shared_timed_mutex> lock(signalLock);
+        signalLock.lock();
         for (auto &q : strandQueues){
             q.second.enqueue(nullptr);
         }
@@ -90,6 +92,7 @@ public:
         strandQueues.clear();
         
         slots.clear();
+        signalLock.unlock();
     }
     
     void emitSignal(const Args& ... p){
@@ -115,7 +118,7 @@ private:
     void operator=(const SignalImpl<Args...>&) = delete;
     
     inline void disconnectSlotFunction(const int& id){
-        std::unique_lock<std::shared_timed_mutex> lock(signalLock);
+        signalLock.lock();
         if (!slots.count(id)) return;
         auto &entry = slots[id];
         if (entry.scheme == BSignals::ExecutorScheme::STRAND){
@@ -125,10 +128,11 @@ private:
             strandQueues.erase(id);
         }
         slots.erase(id);
+        signalLock.unlock();
     }
     
     inline int connectSlotFunction(const int& id, const BSignals::ExecutorScheme& scheme, std::function<void(Args...)> slot){
-        std::unique_lock<std::shared_timed_mutex> lock(signalLock);
+        signalLock.lock();
         slots.emplace(id, ConnectDescriptor{scheme, slot});
         if (scheme == BSignals::ExecutorScheme::STRAND){
             strandQueues[id];
@@ -139,9 +143,10 @@ private:
         }
         else if (scheme == BSignals::ExecutorScheme::DEFERRED_SYNCHRONOUS){
             if (!deferredQueue){
-                deferredQueue = std::make_unique<MPSCQueue<std::pair<std::function<void()>, uint32_t>>>();
+                deferredQueue = std::unique_ptr<MPSCQueue<std::pair<std::function<void()>, uint32_t>>>(new MPSCQueue<std::pair<std::function<void()>, uint32_t>>);
             }
         }
+        signalLock.unlock();
         return (int)id;
     }
     
@@ -172,34 +177,45 @@ private:
     }
     
     inline bool getIsStillConnected(const int& id) const{
-        std::shared_lock<std::shared_timed_mutex> lock(backBufferLock);
-        return (!disconnectBuffer.count(id));
+        backBufferLock.lock_shared();
+        bool retVal = (!disconnectBuffer.count(id));
+        backBufferLock.unlock_shared();
+        return retVal;
     }
     
     inline bool getIsStillConnectedFromExecutor(const int& id) const{
-        std::shared_lock<std::shared_timed_mutex> lock(backBufferLock);
-        std::shared_lock<std::shared_timed_mutex> lockSignal(signalLock);
-        return (!disconnectBuffer.count(id) && slots.count(id));
+        backBufferLock.lock_shared();
+        signalLock.lock_shared();
+        bool retVal = (!disconnectBuffer.count(id) && slots.count(id));
+        signalLock.unlock_shared();
+        backBufferLock.unlock_shared();
+        return retVal;
     }
     
     inline bool getHasWaitingDisconnects() const{
-        std::shared_lock<std::shared_timed_mutex> lock(backBufferLock);
-        return (!disconnectBuffer.empty());
+        backBufferLock.lock_shared();
+        bool retVal = (!disconnectBuffer.empty());
+        backBufferLock.unlock_shared();
+        return retVal;
     }
     
     inline bool getHasWaitingConnects() const{
-        std::shared_lock<std::shared_timed_mutex> lock(backBufferLock);
-        return (!connectBuffer.empty());
+        backBufferLock.lock_shared();
+        bool retVal = (!connectBuffer.empty());
+        backBufferLock.unlock_shared();
+        return retVal;
     }
     
     inline bool getHasWaitingConnectsOrDisconnects() const{
-        std::shared_lock<std::shared_timed_mutex> lock(backBufferLock);
-        return (!connectBuffer.empty() | !disconnectBuffer.empty());
+        backBufferLock.lock_shared();        
+        bool retVal = (!connectBuffer.empty() | !disconnectBuffer.empty());
+        backBufferLock.unlock_shared();
+        return retVal;
     }
     
     inline void emitSignalThreadSafe(const Args& ... p){
         if (getHasWaitingConnectsOrDisconnects()){
-            std::unique_lock<std::shared_timed_mutex> bbLock(backBufferLock);
+            backBufferLock.lock();
             while (!connectBuffer.empty()){
                 const std::pair<uint32_t, ConnectDescriptor> current = *connectBuffer.begin();
                 connectBuffer.erase(connectBuffer.begin());
@@ -208,26 +224,28 @@ private:
                 //backbuffer while holding a signal shared mutex. This will
                 //cause a deadlock. Hence we need to release the backBufferLock
                 //for the duration of the connect
-                bbLock.unlock();
+                backBufferLock.unlock();
                 connectSlotFunction(current.first, current.second.scheme, current.second.slot);
-                bbLock.lock();
+                backBufferLock.lock();
             }
             while (!disconnectBuffer.empty()){
                 const uint32_t disconnectId = *disconnectBuffer.begin();
                 disconnectBuffer.erase(disconnectBuffer.begin());
                 //Same as above, need to relinquish the lock while we disconnect
                 //to avoid deadlock
-                bbLock.unlock();
+                backBufferLock.unlock();
                 disconnectSlotFunction(disconnectId);
-                bbLock.lock();
+                backBufferLock.lock();
             }
+            backBufferLock.unlock();
         }
-        std::shared_lock<std::shared_timed_mutex> lock(signalLock);
+        signalLock.lock_shared();
         for (auto const &kvpair : slots){
             if (getIsStillConnected(kvpair.first)){
                 invokeRelevantExecutor(kvpair.second.scheme, kvpair.first, kvpair.second.slot, p...);
             }
         }
+        signalLock.unlock_shared();
     }
 
     inline void runThreadPooled(const uint32_t& id, const std::function<void(Args...)> &function, const Args &... p) const {
@@ -308,7 +326,7 @@ private:
     
     //Shared mutex for thread safety
     //Emit acquires shared lock, connect/disconnect acquires unique lock
-    mutable std::shared_timed_mutex signalLock;
+    mutable SharedMutex signalLock;
     
     //Async Emit Semaphore
     Semaphore sem {1024};
@@ -343,7 +361,7 @@ private:
     std::map<uint32_t, ConnectDescriptor> connectBuffer;
     
     //Backbuffer lock
-    mutable std::shared_timed_mutex backBufferLock;
+    mutable SharedMutex backBufferLock;
 };
 
 }}

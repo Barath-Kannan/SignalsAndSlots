@@ -38,7 +38,7 @@ GOOGLETEST_LIB = 3rdparty/googletest/gen/debug/lib/static/libgtest.a
 CC = g++
 
 #Compiler options
-OPTS = -Wall -std=c++14 -fPIC
+OPTS = -Wall -std=c++11 -fPIC
 RELEASE_OPTS = -O3
 DEBUG_OPTS = -g
 
@@ -59,7 +59,7 @@ HTYPES = h hpp
 ###########################
 
 PROJECT = BSignals
-VERSION = 1.2.0
+VERSION = 1.3.0
 
 #Define Flags
 DEFINE =  LINUX

@@ -117,8 +117,8 @@ private:
     }
     
     inline void slowEnqueue(const T& input){
-        listNode* node = new listNode{input};
-
+        listNode* node = new listNode();
+        node->data = input;
         listNode* prev_head = _head.exchange(node, std::memory_order_acq_rel);
         prev_head->next.store(node, std::memory_order_release);
 

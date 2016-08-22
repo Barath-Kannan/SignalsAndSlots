@@ -1,6 +1,6 @@
 # BSignals
 
-This is a signals and slots library for C++14. 
+This is a signals and slots library for C++11. 
 
 The intention is to provide a fast thread safe signals/slots mechanism which is easy to use and has no external dependencies. The main differentiating factor between this signals/slots library and others is that it provides the means to specify the type of executor used.
 
@@ -231,5 +231,4 @@ signals/slots implementations
 - More flexible executor specifiers for deferred execution
 
 ##Limitations
-- Requires a C++14 compiler (for shared mutex)
 - Cannot return values from emissions - only void functions/lambdas are accepted
