@@ -28,9 +28,9 @@ public:
 private:
     std::mutex m_mutex;
     std::condition_variable m_cv;
-    uint32_t m_readers{0};
-    uint32_t  m_waitingWriters{0};
-    bool m_writer{false};
+    std::atomic<uint32_t> m_readers{0};
+    std::atomic<uint32_t>  m_waitingWriters{0};
+    std::atomic<bool> m_writer{false};
 };
     
 }}
