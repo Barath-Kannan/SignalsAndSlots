@@ -27,11 +27,9 @@ public:
     
 private:
     void waitForReaders();
-    std::mutex m_writeMutex;
-    std::condition_variable m_writeConditionVariable;
-    std::condition_variable m_secondWriteConditionVariable;
-    std::mutex m_readMutex;
-    std::condition_variable m_readConditionVariable;
+    std::mutex m_mutex;
+    std::condition_variable m_writeCV;
+    std::condition_variable m_readCV;
     std::atomic<uint32_t> m_readers{0};
     std::atomic<uint32_t>  m_waitingWriters{0};
     std::atomic<bool> m_writer{false};
