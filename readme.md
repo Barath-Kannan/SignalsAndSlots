@@ -1,6 +1,6 @@
 # BSignals
 
-This is a signals and slots library for C++11. 
+This is a signals and slots library for C++14. 
 
 The intention is to provide a fast thread safe signals/slots mechanism which is easy to use and has no external dependencies. The main differentiating factor between this signals/slots library and others is that it provides the means to specify the type of executor used.
 
@@ -97,16 +97,6 @@ not be interleaved, or you wish to connect/disconnect a slot or slots from withi
 slot function, enable thread safety using the constructor:
 ```
     BSignals::Signal<T1,T2,T...,TN> signalB(true);
-```
-To specify the maximum number of asynchronous threads a signal can spawn, call
- the constructor with an unsigned integer, as below.
-```
-    BSignals::Signal<T1,T2,T...,TN> signalC(512); //Default is 1024
-```
-To specify both thread safety and the number of asynchronous threads, call the 
-constructor with a boolean and unsigned integer, as below.
-```
-    BSignals::Signal<T1,T2,T...,TN> signalD(true, 512);
 ```
 ####Connect
 Connected functions must have a return type of void and a signature matching that
@@ -222,13 +212,6 @@ with tasks allocated to each queue using round robin scheduling
     - the overhead of a waiting thread for each slot (as in the strand executor scheme) is unnecessary
     - connected functions do NOT need to be processed in order of arrival
 
-##To Do
-- Add executor for signal localised thread pool, as opposed to current global
-thread pool
-- Benchmark emit and connected function completion time against other 
-signals/slots implementations
-- RAII style scoping mechanism for connections
-- More flexible executor specifiers for deferred execution
-
 ##Limitations
 - Cannot return values from emissions - only void functions/lambdas are accepted
+- Requires C++14 for variadic argument <-> tuple unpacking

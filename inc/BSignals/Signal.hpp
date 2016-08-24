@@ -18,27 +18,21 @@ class Signal {
 public:
     Signal() = default;
 
-    Signal(const bool& enforceThreadSafety)
+    Signal(bool enforceThreadSafety)
     : signalImpl(enforceThreadSafety) {}
-
-    Signal(const uint32_t& maxAsyncThreads)
-    : signalImpl(maxAsyncThreads) {}
-
-    Signal(const bool& enforceThreadSafety, const uint32_t& maxAsyncThreads)
-    : signalImpl(enforceThreadSafety, maxAsyncThreads) {}
 
     ~Signal() {}
 
     template<typename F, typename C>
-    int connectMemberSlot(const ExecutorScheme& scheme, F&& function, C&& instance) {
+    int connectMemberSlot(ExecutorScheme scheme, F&& function, C&& instance) {
         return signalImpl.connectMemberSlot(scheme, std::forward<F>(function), std::forward<C>(instance));
     }
 
-    int connectSlot(const ExecutorScheme& scheme, std::function<void(Args...) > slot) {
+    int connectSlot(ExecutorScheme scheme, std::function<void(Args...)> slot) {
         return signalImpl.connectSlot(scheme, slot);
     }
 
-    void disconnectSlot(const uint32_t& id) {
+    void disconnectSlot(int id) {
         signalImpl.disconnectSlot(id);
     }
 
