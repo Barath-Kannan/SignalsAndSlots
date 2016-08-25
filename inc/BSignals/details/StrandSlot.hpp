@@ -33,10 +33,6 @@ public:
         strandQueue.enqueue(std::tuple<Args...>(args...));
     }
     
-    ExecutorScheme getScheme() const{
-        return ExecutorScheme::STRAND;
-    }
-    
 private:
     void queueListener(){
         std::tuple<Args...> tuple{};

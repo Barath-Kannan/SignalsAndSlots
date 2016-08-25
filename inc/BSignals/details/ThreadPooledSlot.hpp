@@ -29,10 +29,6 @@ public:
         });
     }
     
-    ExecutorScheme getScheme() const{
-        return ExecutorScheme::THREAD_POOLED;
-    }
-    
 private:
     std::function<bool()> checkIfValid;
 };

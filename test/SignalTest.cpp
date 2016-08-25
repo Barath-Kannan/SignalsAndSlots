@@ -46,7 +46,7 @@ void staticSumFunction(int a, int b) {
     //cout << a << " + " << b << " = " << globalStaticIntX << endl;
 }
 
-TEST_F(SignalTest, SynchronousSignal) {
+TEST_F(SignalTest, MetaTest){
     cout << "Instantiating signal object" << endl;
 
     Signal<int, int> testSignal;
@@ -54,6 +54,13 @@ TEST_F(SignalTest, SynchronousSignal) {
     BSignals::details::MPSCQueue<std::function<void()>> mpscQ;
     cout << "Size of MPSCQ: " << sizeof(mpscQ) << endl;
     
+    auto dur = BSignals::details::WheeledThreadPool::getMaxWait();
+    cout << "Max wait: " << std::chrono::duration<double, std::nano>(dur).count() << endl;
+}
+
+TEST_F(SignalTest, SynchronousSignal) {
+    cout << "Instantiating signal object" << endl;
+    Signal<int, int> testSignal;
     BasicTimer bt;
     cout << "Connecting signal" << endl;
     bt.start();
@@ -313,8 +320,9 @@ TEST_F(SignalTest, MultiEmit){
 
     bt.start();
     list<thread> threads;
-    std::atomic<uint32_t> threadsRemaining{64};
-    for (uint32_t i=0; i<64; i++){
+    const uint32_t nThreads = 64;
+    std::atomic<uint32_t> threadsRemaining{nThreads};
+    for (uint32_t i=0; i<nThreads; i++){
         threads.emplace_back([&, i](){
             for (uint32_t i=0; i<1000000; ++i){
                 testSignal.emitSignal(1, 2);
@@ -328,7 +336,7 @@ TEST_F(SignalTest, MultiEmit){
     
     bt2.start();
     while (bt2.getElapsedSeconds() < 60.0) {
-        if (globalStaticIntX == 1000000*3*64) {
+        if (globalStaticIntX == 1000000*3*nThreads) {
             bt2.stop();
             break;
         }
@@ -344,349 +352,3 @@ TEST_F(SignalTest, MultiEmit){
     testSignal.disconnectAllSlots();
     for (auto &t : threads) t.join();
 }
-
-TEST_P(SignalTestParametrized, IntenseUsage) {
-    auto tupleParams = GetParam();
-    SignalTestParameters params = {::testing::get<0>(tupleParams), ::testing::get<1>(tupleParams), ::testing::get<2>(tupleParams), ::testing::get<3>(tupleParams), ::testing::get<4>(tupleParams)};
-    BasicTimer bt, bt2;
-
-    cout << "Intense usage test for signal type: ";
-    switch (params.scheme) {
-        case (ExecutorScheme::DEFERRED_SYNCHRONOUS):
-            return;
-        case(ExecutorScheme::ASYNCHRONOUS):
-            cout << "Asynchronous";
-            break;
-        case(ExecutorScheme::STRAND):
-            cout << "Strand";
-            break;
-        case(ExecutorScheme::SYNCHRONOUS):
-            cout << "Synchronous";
-            break;
-        case (ExecutorScheme::THREAD_POOLED):
-            cout << "Thread Pooled";
-            break;
-    }
-    cout << endl;
-    uint32_t counter = 0;
-    atomic<uint32_t> completedFunctions;
-    completedFunctions = 0;
-    cout << "Emissions: " << params.nEmissions << ", Connections: " << params.nConnections <<
-            ", Operations: " << params.nOperations << ", Thread Safe: " << params.threadSafe << endl;
-
-    typedef uint32_t sigType;
-    auto func = ([&params, &completedFunctions](sigType x) {
-        volatile sigType v = x;
-        for (uint32_t i = 0; i < params.nOperations; i++) {
-            v+=x;
-        }
-        completedFunctions++;
-    });
-//
-//    bt.start();
-//    for (uint32_t i = 0; i < 100; i++) {
-//        func(sigType{i});
-//    }
-//    bt.stop();
-//    completedFunctions -= 100;
-//    cout << "Function runtime overhead: " << bt.getElapsedNanoseconds() / 100 << "ns" << endl;
-
-    Signal<sigType> signal(params.threadSafe);
-    cout << "Connecting " << params.nConnections << " functions" << endl;
-    for (uint32_t i = 0; i < params.nConnections; i++) {
-        signal.connectSlot(params.scheme, func);
-    }
-
-    FunctionTimeRegular<> printer([this, &counter, &completedFunctions, &bt, &bt2, &params]() {
-        cout << "Total elements emitted: " << counter << " / " << params.nEmissions << fixed << endl;
-        cout << "Emission rate: " << (double) counter / bt.getElapsedMilliseconds() << fixed << "m/ms" << endl;
-        cout << "Total elements processed: " << completedFunctions << " / " << params.nEmissions * params.nConnections << fixed << endl;
-        cout << "Operation rate: " << (double) completedFunctions * params.nOperations / bt2.getElapsedNanoseconds() << "m/ns" << endl;
-        return (bt2.getElapsedSeconds() < 6000);
-    }, std::chrono::milliseconds(500));
-
-    FunctionTimeRegular<> checkFinished([this, &params, &completedFunctions]() {
-        return (completedFunctions != params.nEmissions * params.nConnections);
-    }, std::chrono::milliseconds(1));
-
-    cout << "Starting emission thread: " << endl;
-    
-    thread emitter([&params, &signal, &bt, &bt2, &counter]() {
-        sigType emitval = 1;
-        bt2.start();
-        bt.start();
-        for (uint32_t i=0; i<params.nEmissions; i++) {
-            signal.emitSignal(emitval);
-            counter++;
-        }
-        bt.stop();
-    });
-    cout << "Emission thread spawned" << endl;
-    cout.precision(std::numeric_limits<double>::max_digits10);
-    emitter.join();
-    cout << "Emission completed" << endl;
-    checkFinished.join();
-    bt2.stop();
-    printer.stopAndJoin();
-    cout << "Processing completed" << endl;
-    cout << "Emission rate: " << (double) counter / bt.getElapsedMilliseconds() << fixed << "m/ms" << endl;
-    cout << "Time to emit: " << bt.getElapsedMilliseconds() << "ms" << endl;
-    cout << "Average emit time (overall): " << (double) bt.getElapsedNanoseconds() / (params.nEmissions) << "ns" << endl;
-    cout << "Average emit time (per connection): " << (double) bt.getElapsedNanoseconds() / (params.nEmissions*params.nConnections) << "ns" << endl;
-    cout << "Time to emit+process: " << bt2.getElapsedMilliseconds() << "ms" << endl;
-    cout << "Average emit+process time (overall): " << (double) bt2.getElapsedNanoseconds() / params.nEmissions << "ns" << endl;
-    cout << "Average emit+process time (per connection): " << (double) bt2.getElapsedNanoseconds() / (params.nEmissions*params.nConnections) << "ns" << endl;
-}
-
-
-TEST_P(SignalTestParametrized, Correctness) {
-    auto tupleParams = GetParam();
-    SignalTestParameters params = {::testing::get<0>(tupleParams), ::testing::get<1>(tupleParams), ::testing::get<2>(tupleParams), ::testing::get<3>(tupleParams), ::testing::get<4>(tupleParams)};
-    BasicTimer bt, bt2;
-
-    cout << "Intense usage test for signal type: ";
-    switch (params.scheme) {
-        case (ExecutorScheme::DEFERRED_SYNCHRONOUS):
-            return;
-        case(ExecutorScheme::ASYNCHRONOUS):
-            cout << "Asynchronous";
-            break;
-        case(ExecutorScheme::STRAND):
-            cout << "Strand";
-            break;
-        case(ExecutorScheme::SYNCHRONOUS):
-            cout << "Synchronous";
-            break;
-        case (ExecutorScheme::THREAD_POOLED):
-            cout << "Thread Pooled";
-            break;
-    }
-    cout << endl;
-    uint32_t counter = 0;
-    atomic<uint32_t> completedFunctions;
-    completedFunctions = 0;
-    cout << "Emissions: " << params.nEmissions << ", Connections: " << params.nConnections <<
-            ", Operations: " << params.nOperations << ", Thread Safe: " << params.threadSafe << endl;
-
-    typedef uint32_t sigType;
-    
-    std::vector<uint32_t> doneFlags(params.nEmissions, 0);
-    auto func = ([&params, &completedFunctions, &doneFlags](sigType x) {
-        volatile sigType v = x;
-        for (uint32_t i = 0; i < params.nOperations; i++) {
-            v+=x;
-        }
-        doneFlags[x] = 1;
-        completedFunctions++;
-    });
-
-    Signal<sigType> signal(params.threadSafe);
-    cout << "Connecting " << params.nConnections << " functions" << endl;
-    for (uint32_t i = 0; i < params.nConnections; i++) {
-        signal.connectSlot(params.scheme, func);
-    }
-
-    FunctionTimeRegular<> printer([this, &counter, &completedFunctions, &bt, &bt2, &params]() {
-        cout << "Total elements emitted: " << counter << " / " << params.nEmissions << fixed << endl;
-        cout << "Emission rate: " << (double) counter / bt.getElapsedMilliseconds() << fixed << "m/ms" << endl;
-        cout << "Total elements processed: " << completedFunctions << " / " << params.nEmissions * params.nConnections << fixed << endl;
-        cout << "Operation rate: " << (double) completedFunctions * params.nOperations / bt2.getElapsedNanoseconds() << "m/ns" << endl;
-        return (bt2.getElapsedSeconds() < 6000);
-    }, std::chrono::milliseconds(500));
-
-    FunctionTimeRegular<> checkFinished([this, &params, &completedFunctions]() {
-        return (completedFunctions != params.nEmissions * params.nConnections);
-    }, std::chrono::milliseconds(1));
-
-    cout << "Starting emission thread: " << endl;
-    
-    std::list<thread> emitters;
-    thread emitter([&params, &signal, &bt, &bt2, &counter]() {
-        bt2.start();
-        bt.start();
-        for (counter=0; counter<params.nEmissions; ++counter) {
-            signal.emitSignal(counter);
-        }
-        bt.stop();
-    });
-    cout << "Emission thread spawned" << endl;
-    cout.precision(std::numeric_limits<double>::max_digits10);
-    emitter.join();
-    cout << "Emission completed" << endl;
-    checkFinished.join();
-    bt2.stop();
-    printer.stopAndJoin();
-    cout << "Processing completed" << endl;
-    cout << "Emission rate: " << (double) counter / bt.getElapsedMilliseconds() << fixed << "m/ms" << endl;
-    cout << "Time to emit: " << bt.getElapsedMilliseconds() << "ms" << endl;
-    cout << "Average emit time (overall): " << (double) bt.getElapsedNanoseconds() / (params.nEmissions) << "ns" << endl;
-    cout << "Average emit time (per connection): " << (double) bt.getElapsedNanoseconds() / (params.nEmissions*params.nConnections) << "ns" << endl;
-    cout << "Time to emit+process: " << bt2.getElapsedMilliseconds() << "ms" << endl;
-    cout << "Average emit+process time (overall): " << (double) bt2.getElapsedNanoseconds() / params.nEmissions << "ns" << endl;
-    cout << "Average emit+process time (per connection): " << (double) bt2.getElapsedNanoseconds() / (params.nEmissions*params.nConnections) << "ns" << endl;
-    
-    for (uint32_t i=0; i<params.nEmissions; i++) ASSERT_TRUE(doneFlags[i]);
-}
-
-
-TEST_P(SignalTestParametrized, LengthyUsage) {
-    auto tupleParams = GetParam();
-    SignalTestParameters params = {::testing::get<0>(tupleParams), ::testing::get<1>(tupleParams), ::testing::get<2>(tupleParams), ::testing::get<3>(tupleParams), ::testing::get<4>(tupleParams)};
-    BasicTimer bt, bt2;
-
-    cout << "Lengthy usage test for signal type: ";
-    switch (params.scheme) {
-        case (ExecutorScheme::DEFERRED_SYNCHRONOUS):
-            return;
-        case(ExecutorScheme::ASYNCHRONOUS):
-            cout << "Asynchronous";
-            break;
-        case(ExecutorScheme::STRAND):
-            cout << "Strand";
-            break;
-        case(ExecutorScheme::SYNCHRONOUS):
-            cout << "Synchronous";
-            break;
-        case (ExecutorScheme::THREAD_POOLED):
-            cout << "Thread Pooled";
-            break;
-    }
-    cout << endl;
-    uint32_t counter = 0;
-    atomic<uint32_t> completedFunctions{0};
-    cout << "Emissions: " << params.nEmissions << ", Connections: " << params.nConnections <<
-            ", Operations: " << params.nOperations << ", Thread Safe: " << params.threadSafe << endl;
-
-    typedef uint32_t sigType;
-    auto func = ([&params, &completedFunctions](sigType x) {
-        std::this_thread::sleep_for(std::chrono::nanoseconds(params.nOperations*1000));
-        completedFunctions.fetch_add(1);
-    });
-
-//    bt.start();
-//    for (uint32_t i = 0; i < 100; i++) {
-//        func(sigType{i});
-//    }
-//    bt.stop();
-//    completedFunctions -= 100;
-//    cout << "Function runtime overhead: " << bt.getElapsedNanoseconds() / 100 << "ns" << endl;
-
-    Signal<sigType> signal(params.threadSafe);
-    cout << "Connecting " << params.nConnections << " functions" << endl;
-    for (uint32_t i = 0; i < params.nConnections; i++) {
-        signal.connectSlot(params.scheme, func);
-    }
-
-    FunctionTimeRegular<> printer([this, &counter, &completedFunctions, &bt, &bt2, &params]() {
-        cout << "Total elements emitted: " << counter << " / " << params.nEmissions << fixed << endl;
-        cout << "Emission rate: " << (double) counter / bt.getElapsedMilliseconds() << fixed << "m/ms" << endl;
-        cout << "Total elements processed: " << completedFunctions << " / " << params.nEmissions * params.nConnections << fixed << endl;
-        cout << "Operation rate: " << (double) completedFunctions * params.nOperations / bt2.getElapsedNanoseconds() << "m/ns" << endl;
-        return (bt2.getElapsedSeconds() < 6000);
-    }, std::chrono::milliseconds(500));
-
-    FunctionTimeRegular<> checkFinished([this, &params, &completedFunctions]() {
-        return (completedFunctions != params.nEmissions * params.nConnections);
-    }, std::chrono::milliseconds(1));
-
-    cout << "Starting emission thread: " << endl;
-    
-    thread emitter([&params, &signal, &bt, &bt2, &counter]() {
-        sigType emitval = 1;
-        bt2.start();
-        bt.start();
-        for (uint32_t i=0; i<params.nEmissions; i++) {
-            signal.emitSignal(emitval);
-            counter++;
-        }
-        bt.stop();
-    });
-    cout << "Emission thread spawned" << endl;
-    cout.precision(std::numeric_limits<double>::max_digits10);
-
-    emitter.join();
-    cout << "Emission completed" << endl;
-    checkFinished.join();
-    bt2.stop();
-    printer.stopAndJoin();
-    cout << "Processing completed" << endl;
-    cout << "Emission rate: " << (double) counter / bt.getElapsedMilliseconds() << fixed << "m/ms" << endl;
-    cout << "Time to emit: " << bt.getElapsedMilliseconds() << "ms" << endl;
-    cout << "Average emit time (overall): " << (double) bt.getElapsedNanoseconds() / (params.nEmissions) << "ns" << endl;
-    cout << "Average emit time (per connection): " << (double) bt.getElapsedNanoseconds() / (params.nEmissions*params.nConnections) << "ns" << endl;
-    cout << "Time to emit+process: " << bt2.getElapsedMilliseconds() << "ms" << endl;
-    cout << "Average emit+process time (overall): " << (double) bt2.getElapsedNanoseconds() / params.nEmissions << "ns" << endl;
-    cout << "Average emit+process time (per connection): " << (double) bt2.getElapsedNanoseconds() / (params.nEmissions*params.nConnections) << "ns" << endl;
-}
-
-INSTANTIATE_TEST_CASE_P(
-        SignalTest_Benchmark_Synchronous,
-        SignalTestParametrized,
-        testing::Combine(
-        Values(1, 10, 50), //number of connections
-        Values(10, 1000, 10000), //number of emissions per connection
-        Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
-        Values(false),
-        Values(ExecutorScheme::SYNCHRONOUS)
-        )
-        );
-
-INSTANTIATE_TEST_CASE_P(
-        SignalTest_Benchmark_Asynchronous,
-        SignalTestParametrized,
-        testing::Combine(
-        Values(1, 10, 50), //number of connections
-        Values(10, 1000, 10000), //number of emissions per connection
-        Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
-        Values(false),
-        Values(ExecutorScheme::ASYNCHRONOUS)
-        )
-        );
-
-INSTANTIATE_TEST_CASE_P(
-        SignalTest_Benchmark_Strand,
-        SignalTestParametrized,
-        testing::Combine(
-        Values(1, 10, 50), //number of connections
-        Values(10, 1000, 10000), //number of emissions per connection
-        Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
-        Values(false),
-        Values(ExecutorScheme::STRAND)
-        )
-        );
-
-INSTANTIATE_TEST_CASE_P(
-        SignalTest_Benchmark_ThreadPooled,
-        SignalTestParametrized,
-        testing::Combine(
-        Values(1, 10, 50), //number of connections
-        Values(10, 1000, 10000), //number of emissions per connection
-        Values(1, 10, 100, 1000, 10000, 50000, 1000000), //number of operations in each function
-        Values(false),
-        Values(ExecutorScheme::THREAD_POOLED)
-        )
-        );
-
-INSTANTIATE_TEST_CASE_P(
-        SignalTest_Benchmark_PureEmission,
-        SignalTestParametrized,
-        testing::Combine(
-        Values(1), //nconnections
-        Values(100000), //number of emissions
-        Values(1), //number of operations
-        Values(true, false),
-        Values(ExecutorScheme::SYNCHRONOUS, ExecutorScheme::ASYNCHRONOUS, ExecutorScheme::STRAND, ExecutorScheme::THREAD_POOLED)
-        )
-        );
-
-INSTANTIATE_TEST_CASE_P(
-        SignalTest_Benchmark_PureEmissionPlus,
-        SignalTestParametrized,
-        testing::Combine(
-        Values(1), //nconnections
-        Values(100000000), //number of emissions
-        Values(1), //number of operations
-        Values(true, false),
-        Values(ExecutorScheme::SYNCHRONOUS, ExecutorScheme::STRAND, ExecutorScheme::THREAD_POOLED) //asynchronous is too slow for this
-        )
-        );

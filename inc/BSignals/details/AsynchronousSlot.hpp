@@ -35,10 +35,6 @@ public:
         slotThread.detach();
     }
     
-    ExecutorScheme getScheme() const{
-        return ExecutorScheme::ASYNCHRONOUS;
-    }
-    
 private:
     std::function<bool()> checkIfValid;
     Semaphore sem{1024};

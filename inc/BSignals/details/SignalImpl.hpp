@@ -60,6 +60,7 @@ public:
         if (enableEmissionGuard){
             std::lock_guard<std::mutex> lock(connectBufferLock);
             connectBuffer.emplace(id, ConnectDescriptor{scheme, slot});
+            connectBufferDirty = true;
             return id;
         }
         else{
@@ -119,33 +120,36 @@ private:
     }
     
     int connectSlotFunction(uint32_t id, BSignals::ExecutorScheme scheme, std::function<void(Args...)> slot){
-        slotLock.lock();
+        std::unique_ptr<Slot<Args...>> slotInstance{nullptr};
         switch(scheme){
             case(BSignals::ExecutorScheme::STRAND):
-                slots.emplace(std::piecewise_construct, std::make_tuple(id),
-                    std::make_tuple(new StrandSlot<Args...>(slot)));
+                slotInstance = std::make_unique<StrandSlot<Args...>>(slot);
                 break;
             case(BSignals::ExecutorScheme::THREAD_POOLED):
-                slots.emplace(std::piecewise_construct, std::make_tuple(id),
-                    enableEmissionGuard ? std::make_tuple(new ThreadPooledSlot<Args...>(slot, [this, id](){return getIsStillConnectedFromExecutor(id);})) :
-                        std::make_tuple(new ThreadPooledSlot<Args...>(slot)));
+                if (enableEmissionGuard) slotInstance = std::make_unique<ThreadPooledSlot<Args...>>(slot, [this, id](){return getIsStillConnectedFromExecutor(id);});
+                else slotInstance = std::make_unique<ThreadPooledSlot<Args...>>(slot);
                 break;
             case(BSignals::ExecutorScheme::ASYNCHRONOUS):
-                slots.emplace(std::piecewise_construct, std::make_tuple(id),
-                    enableEmissionGuard ? std::make_tuple(new AsynchronousSlot<Args...>(slot, [this, id](){return getIsStillConnectedFromExecutor(id);})) :
-                        std::make_tuple(new AsynchronousSlot<Args...>(slot)));
+                if (enableEmissionGuard) slotInstance = std::make_unique<AsynchronousSlot<Args...>>(slot, [this, id](){return getIsStillConnectedFromExecutor(id);});
+                else slotInstance = std::make_unique<AsynchronousSlot<Args...>>(slot);
                 break;
             case(BSignals::ExecutorScheme::DEFERRED_SYNCHRONOUS):
-                if (!deferredQueue) deferredQueue = std::shared_ptr<MPSCQueue<std::pair<std::function<void()>, uint32_t>>>(new MPSCQueue<std::pair<std::function<void()>, uint32_t>>);
-                slots.emplace(std::piecewise_construct, std::make_tuple(id), std::make_tuple(new DeferredSlot<Args...>(slot, deferredQueue, id)));
+                initializeDeferredQueue();
+                slotInstance = std::make_unique<DeferredSlot<Args...>>(slot, deferredQueue, id);
                 break;
             case(BSignals::ExecutorScheme::SYNCHRONOUS):
-                slots.emplace(std::piecewise_construct, std::make_tuple(id),
-                    std::make_tuple(new SynchronousSlot<Args...>(slot)));
+                slotInstance = std::make_unique<SynchronousSlot<Args...>>(slot);
                 break;
         }
+        slotLock.lock();
+        slots.emplace_hint(slots.end(), std::piecewise_construct, std::make_tuple(id),
+                    std::make_tuple(std::move(slotInstance)));
         slotLock.unlock();
         return (int)id;
+    }
+    
+    inline void initializeDeferredQueue(){
+        if (!deferredQueue) deferredQueue = std::shared_ptr<MPSCQueue<std::pair<std::function<void()>, uint32_t>>>(new MPSCQueue<std::pair<std::function<void()>, uint32_t>>);
     }
     
     inline void emitSignalUnsafe(const Args& ... p){
@@ -163,12 +167,17 @@ private:
     }
     
     inline void emitSignalThreadSafe(const Args& ... p){
-        if (!connectBuffer.empty()){
+        while (connectBufferDirty.load(std::memory_order_acquire)){
             connectBufferLock.lock();
+            if (!connectBufferDirty.load(std::memory_order_acquire)){
+                connectBufferLock.unlock();
+                break;
+            }
             for (auto const &kvpair : connectBuffer){
                 connectSlotFunction(kvpair.first, kvpair.second.scheme, kvpair.second.slot);
             }
             connectBuffer.clear();
+            connectBufferDirty.store(false, std::memory_order_release);
             connectBufferLock.unlock();
             slotLock.lock();
             for (auto it = slots.begin(); it!= slots.end();){
@@ -224,6 +233,7 @@ private:
     std::map<uint32_t, std::unique_ptr<Slot<Args...>> > slots;
     
     mutable std::mutex connectBufferLock;
+    std::atomic<bool> connectBufferDirty{false};
     std::map<uint32_t, ConnectDescriptor> connectBuffer;
 };
 

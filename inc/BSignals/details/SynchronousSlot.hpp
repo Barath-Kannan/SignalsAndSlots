@@ -20,10 +20,7 @@ public:
     void execute(const Args& ... args){
         this->slotFunction(args...);
     }
-    
-    ExecutorScheme getScheme() const{
-        return ExecutorScheme::SYNCHRONOUS;
-    }
+
 };
 
 }}

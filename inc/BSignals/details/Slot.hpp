@@ -21,7 +21,6 @@ public:
     Slot(std::function<void(Args...)> f) : slotFunction(f){};
     virtual ~Slot(){};
     virtual void execute(const Args& ... args) = 0;
-    virtual ExecutorScheme getScheme() const = 0;
     
     bool isAlive() const{
         return (alive.load(std::memory_order_acquire));
