@@ -1,6 +1,7 @@
 # BSignals
 
-NOTE: This library is large deprecated in unmaintained. The functionality will be replaced by a library with a better API at: https://github.com/Barath-Kannan/exo
+NOTE: This library is deprecated and unmaintained.  
+It will eventually be replaced by: https://github.com/Barath-Kannan/exo
 
 This is a signals and slots library for C++14. 
 
