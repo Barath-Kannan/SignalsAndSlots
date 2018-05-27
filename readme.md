@@ -1,5 +1,7 @@
 # BSignals
 
+NOTE: This library is large deprecated in unmaintained. The functionality will be replaced by a library with a better API at: https://github.com/Barath-Kannan/exo
+
 This is a signals and slots library for C++14. 
 
 The intention is to provide a fast thread safe signals/slots mechanism which is easy to use and has no external dependencies. The main differentiating factor between this signals/slots library and others is that it provides the means to specify the type of executor used.
